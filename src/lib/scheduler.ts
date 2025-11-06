@@ -239,3 +239,147 @@ function formatTime(totalMinutes: number): string {
   const minutes = totalMinutes % 60;
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
+
+export function regenerateScheduleFromSlot(
+  players: string[],
+  playedMatches: Match[],
+  fromSlotStart: number,
+  gameDuration: number,
+  totalTime: number,
+  courts: number,
+  startTime?: string
+): Match[] {
+  const playerStats = new Map<string, PlayerStats>();
+
+  // Initialize all players with zero stats
+  players.forEach((player) => {
+    playerStats.set(player, {
+      playTime: 0,
+      restTime: 0,
+      partners: new Set(),
+      opponents: new Set(),
+      lastMatchEnd: 0,
+    });
+  });
+
+  // Update stats from played matches
+  playedMatches.forEach((match) => {
+    [...match.team1, ...match.team2].forEach((player) => {
+      const stats = playerStats.get(player);
+      if (stats) {
+        stats.playTime += gameDuration;
+        stats.lastMatchEnd = match.endTime;
+
+        const [p1, p2] = match.team1;
+        const [p3, p4] = match.team2;
+        
+        if (player === p1) {
+          stats.partners.add(p2);
+          stats.opponents.add(p3);
+          stats.opponents.add(p4);
+        } else if (player === p2) {
+          stats.partners.add(p1);
+          stats.opponents.add(p3);
+          stats.opponents.add(p4);
+        } else if (player === p3) {
+          stats.partners.add(p4);
+          stats.opponents.add(p1);
+          stats.opponents.add(p2);
+        } else if (player === p4) {
+          stats.partners.add(p3);
+          stats.opponents.add(p1);
+          stats.opponents.add(p2);
+        }
+      }
+    });
+  });
+
+  // Generate new matches starting from fromSlotStart
+  const newMatches: Match[] = [...playedMatches];
+  const totalSlots = Math.floor(totalTime / gameDuration);
+  const playersPerMatch = 4;
+  const matchesPerSlot = courts;
+
+  const allTeams: [string, string][] = [];
+  for (let i = 0; i < players.length; i++) {
+    for (let j = i + 1; j < players.length; j++) {
+      allTeams.push([players[i], players[j]]);
+    }
+  }
+
+  let matchId = playedMatches.length;
+  const startSlot = Math.floor(fromSlotStart / gameDuration);
+
+  for (let slot = startSlot; slot < totalSlots; slot++) {
+    const slotStartTime = slot * gameDuration;
+    const slotEndTime = slotStartTime + gameDuration;
+    const availablePlayers = new Set(players);
+    
+    players.forEach((player) => {
+      const stats = playerStats.get(player);
+      if (stats && stats.lastMatchEnd === slotStartTime) {
+        if (Math.random() > 0.5 && availablePlayers.size > playersPerMatch * matchesPerSlot) {
+          availablePlayers.delete(player);
+        }
+      }
+    });
+
+    for (let court = 0; court < matchesPerSlot && availablePlayers.size >= playersPerMatch; court++) {
+      const match = createOptimalMatch(
+        Array.from(availablePlayers),
+        playerStats,
+        allTeams,
+        slotStartTime,
+        slotEndTime,
+        court + 1
+      );
+
+      if (match) {
+        const matchWithId = { ...match, id: `match-${matchId++}` };
+        
+        if (startTime) {
+          const [hours, minutes] = startTime.split(':').map(Number);
+          const baseMinutes = hours * 60 + minutes;
+          
+          const matchStartMinutes = baseMinutes + slotStartTime;
+          const matchEndMinutes = matchStartMinutes + gameDuration;
+          
+          matchWithId.clockStartTime = formatTime(matchStartMinutes);
+          matchWithId.clockEndTime = formatTime(matchEndMinutes);
+        }
+        
+        newMatches.push(matchWithId);
+        
+        [...match.team1, ...match.team2].forEach((player) => {
+          const stats = playerStats.get(player)!;
+          stats.playTime += gameDuration;
+          stats.lastMatchEnd = slotEndTime;
+          availablePlayers.delete(player);
+
+          const [p1, p2] = match.team1;
+          const [p3, p4] = match.team2;
+          
+          if (player === p1) {
+            stats.partners.add(p2);
+            stats.opponents.add(p3);
+            stats.opponents.add(p4);
+          } else if (player === p2) {
+            stats.partners.add(p1);
+            stats.opponents.add(p3);
+            stats.opponents.add(p4);
+          } else if (player === p3) {
+            stats.partners.add(p4);
+            stats.opponents.add(p1);
+            stats.opponents.add(p2);
+          } else {
+            stats.partners.add(p3);
+            stats.opponents.add(p1);
+            stats.opponents.add(p2);
+          }
+        });
+      }
+    }
+  }
+
+  return newMatches;
+}

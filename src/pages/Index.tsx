@@ -12,6 +12,7 @@ const Index = () => {
   const [step, setStep] = useState<Step>("players");
   const [players, setPlayers] = useState<string[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
 
   const handlePlayersComplete = (playerList: string[]) => {
     setPlayers(playerList);
@@ -19,6 +20,7 @@ const Index = () => {
   };
 
   const handleGameSetupComplete = (config: GameConfig) => {
+    setGameConfig(config);
     const schedule = generateSchedule(
       players,
       config.gameDuration,
@@ -28,6 +30,11 @@ const Index = () => {
     );
     setMatches(schedule);
     setStep("schedule");
+  };
+
+  const handleScheduleUpdate = (newMatches: Match[], newPlayers: string[]) => {
+    setMatches(newMatches);
+    setPlayers(newPlayers);
   };
 
   const handleBack = () => {
@@ -42,6 +49,7 @@ const Index = () => {
     setStep("players");
     setPlayers([]);
     setMatches([]);
+    setGameConfig(null);
   };
 
   return (
@@ -72,8 +80,14 @@ const Index = () => {
             />
           )}
           
-          {step === "schedule" && (
-            <ScheduleView matches={matches} onBack={resetApp} />
+          {step === "schedule" && gameConfig && (
+            <ScheduleView
+              matches={matches}
+              onBack={resetApp}
+              gameConfig={gameConfig}
+              allPlayers={players}
+              onScheduleUpdate={handleScheduleUpdate}
+            />
           )}
         </Card>
 

@@ -1,22 +1,40 @@
 import { useState, useMemo } from "react";
-import { Match } from "@/lib/scheduler";
+import { Match, regenerateScheduleFromSlot } from "@/lib/scheduler";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trophy, Clock, Users, Share2, Medal } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, Users, Share2, Medal, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface ScheduleViewProps {
   matches: Match[];
   onBack: () => void;
+  gameConfig: {
+    gameDuration: number;
+    totalTime: number;
+    courts: number;
+    startTime: string;
+  };
+  allPlayers: string[];
+  onScheduleUpdate: (newMatches: Match[], newPlayers: string[]) => void;
 }
 
-export const ScheduleView = ({ matches, onBack }: ScheduleViewProps) => {
+export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onScheduleUpdate }: ScheduleViewProps) => {
   const { toast } = useToast();
   const [matchScores, setMatchScores] = useState<Map<string, { team1: number; team2: number }>>(
     new Map()
   );
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
 
   const updateScore = (matchId: string, team: "team1" | "team2", score: number) => {
     const current = matchScores.get(matchId) || { team1: 0, team2: 0 };
@@ -98,22 +116,106 @@ export const ScheduleView = ({ matches, onBack }: ScheduleViewProps) => {
     toast({ title: "Copied to clipboard!" });
   };
 
+  const handleAddPlayer = () => {
+    const trimmedName = newPlayerName.trim();
+    if (!trimmedName) {
+      toast({ title: "Please enter a player name", variant: "destructive" });
+      return;
+    }
+    
+    if (allPlayers.some(p => p.toLowerCase() === trimmedName.toLowerCase())) {
+      toast({ title: "Player already exists", variant: "destructive" });
+      return;
+    }
+
+    // Find the first match without scores (not yet played)
+    const firstUnplayedMatchIndex = matches.findIndex(m => !matchScores.has(m.id));
+    
+    if (firstUnplayedMatchIndex === -1) {
+      toast({ title: "All matches completed", description: "Cannot add players after tournament ends", variant: "destructive" });
+      return;
+    }
+
+    const firstUnplayedMatch = matches[firstUnplayedMatchIndex];
+    
+    // Keep matches that have been played
+    const playedMatches = matches.slice(0, firstUnplayedMatchIndex);
+    
+    // Add scores to played matches
+    const matchesWithScores = playedMatches.map(m => ({
+      ...m,
+      score: matchScores.get(m.id)
+    }));
+
+    // Regenerate from the next slot
+    const updatedPlayers = [...allPlayers, trimmedName];
+    const newMatches = regenerateScheduleFromSlot(
+      updatedPlayers,
+      matchesWithScores,
+      firstUnplayedMatch.startTime,
+      gameConfig.gameDuration,
+      gameConfig.totalTime,
+      gameConfig.courts,
+      gameConfig.startTime
+    );
+
+    onScheduleUpdate(newMatches, updatedPlayers);
+    setNewPlayerName("");
+    setIsAddPlayerOpen(false);
+    toast({ title: "Player added!", description: "Schedule updated from next slot onwards" });
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={onBack} size="sm" className="gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </Button>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-            <Trophy className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Match Schedule</h2>
-            <p className="text-sm text-muted-foreground">{matches.length} matches generated</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={onBack} size="sm" className="gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+              <Trophy className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Match Schedule</h2>
+              <p className="text-sm text-muted-foreground">{matches.length} matches • {allPlayers.length} players</p>
+            </div>
           </div>
         </div>
+
+        <Dialog open={isAddPlayerOpen} onOpenChange={setIsAddPlayerOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <UserPlus className="w-4 h-4" />
+              Add Player
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Player</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-player">Player Name</Label>
+                <Input
+                  id="new-player"
+                  value={newPlayerName}
+                  onChange={(e) => setNewPlayerName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
+                  placeholder="Enter player name"
+                  className="h-12 text-lg"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Schedule will be regenerated from the next unplayed match onwards.
+              </p>
+              <Button onClick={handleAddPlayer} className="w-full h-12">
+                Add Player & Update Schedule
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="space-y-8">
