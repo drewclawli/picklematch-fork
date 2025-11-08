@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target } from "lucide-react";
+import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { validateMatchScore } from "@/lib/validation";
+import { useStopwatch } from "@/hooks/use-stopwatch";
 import {
   Carousel,
   CarouselContent,
@@ -44,6 +45,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
   const [carouselApis, setCarouselApis] = useState<Map<number, CarouselApi>>(new Map());
   const [editingMatch, setEditingMatch] = useState<string | null>(null);
   const [editedTeams, setEditedTeams] = useState<{ team1: string[]; team2: string[] }>({ team1: [], team2: [] });
+  const [matchStartTimes, setMatchStartTimes] = useState<Map<string, number>>(new Map());
 
   // Helper to normalize scores to numbers
   const normalizeScore = (score: { team1: number | string; team2: number | string } | undefined) => {
@@ -62,6 +64,16 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     }
     return null;
   }, [matches, matchScores]);
+
+  // Track when matches become current and start stopwatches
+  useEffect(() => {
+    if (currentMatch && !matchStartTimes.has(currentMatch)) {
+      setMatchStartTimes(prev => new Map(prev).set(currentMatch, Date.now()));
+    }
+  }, [currentMatch]);
+
+  // Stopwatch hook for current match
+  const { formattedTime, reset: resetStopwatch } = useStopwatch(!!currentMatch);
 
   const updatePendingScore = (matchId: string, team: "team1" | "team2", value: string) => {
     // Allow empty string for partial input
@@ -197,6 +209,9 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     const newPending = new Map(pendingScores);
     newPending.delete(matchId);
     setPendingScores(newPending);
+
+    // Reset stopwatch when score is confirmed
+    resetStopwatch();
 
     const completedMatchRef = matches.find(m => m.id === matchId);
     const actualEndTime = completedMatchRef ? completedMatchRef.endTime : 0;
@@ -703,9 +718,18 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                               </Badge>
                               <Badge variant="outline" className="text-xs">
                                 <Clock className="w-3 h-3 mr-1" />
-                                {match.clockStartTime || `${match.startTime} min`}
+                                {isCurrentMatch ? 'Started' : 'Est.'} {match.clockStartTime || `${match.startTime} min`}
                               </Badge>
                             </div>
+
+                            {/* Stopwatch for Current Match */}
+                            {isCurrentMatch && (
+                              <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/20">
+                                <Timer className="w-4 h-4 text-primary animate-pulse" />
+                                <span className="text-lg font-bold text-primary">{formattedTime}</span>
+                                <span className="text-xs text-muted-foreground">elapsed</span>
+                              </div>
+                            )}
 
                             {/* Team 1 */}
                             <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
