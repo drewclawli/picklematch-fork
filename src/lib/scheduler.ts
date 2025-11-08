@@ -14,6 +14,7 @@ export interface Match {
   status?: 'scheduled' | 'in-progress' | 'completed';
   actualEndTime?: number;
   isSingles?: boolean;
+  isLocked?: boolean; // Indicates if this match should be preserved
 }
 
 export interface CourtConfig {
@@ -35,7 +36,15 @@ interface PlayerStats {
   recentPartners: string[]; // Track last 3 partners
   recentOpponents: string[]; // Track last 6 opponents
   consecutiveMatches: number; // Count consecutive matches without rest
+  matchesPerCourt: Map<number, number>; // Track matches per court
 }
+
+interface ScheduleSlot {
+  timeSlot: number;
+  matches: Match[];
+}
+
+// ==================== MAIN GENERATION FUNCTION ====================
 
 export function generateSchedule(
   players: string[],
@@ -46,12 +55,96 @@ export function generateSchedule(
   teammatePairs: TeammatePair[] = [],
   courtConfigs: CourtConfig[] = []
 ): Match[] {
-  const matches: Match[] = [];
-  const playerStats = new Map<string, PlayerStats>();
+  const finalCourtConfigs = courtConfigs.length > 0 
+    ? courtConfigs 
+    : Array.from({ length: courts }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }));
 
-  // Initialize player stats
+  return generateCompleteSchedule(
+    players,
+    gameDuration,
+    totalTime,
+    finalCourtConfigs,
+    startTime,
+    teammatePairs
+  );
+}
+
+// ==================== PRE-GENERATION SCHEDULER ====================
+
+function generateCompleteSchedule(
+  players: string[],
+  gameDuration: number,
+  totalTime: number,
+  courtConfigs: CourtConfig[],
+  startTime?: string,
+  teammatePairs: TeammatePair[] = []
+): Match[] {
+  const totalSlots = Math.floor(totalTime / gameDuration);
+  const playerStats = initializePlayerStats(players, courtConfigs.length);
+  const schedule: ScheduleSlot[] = [];
+
+  // Pre-generate ALL matches for ALL time slots and courts
+  for (let slot = 0; slot < totalSlots; slot++) {
+    const slotStartTime = slot * gameDuration;
+    const slotEndTime = slotStartTime + gameDuration;
+    const slotMatches: Match[] = [];
+
+    // Track players used in this time slot (prevents cross-court conflicts)
+    const playersUsedThisSlot = new Set<string>();
+
+    // Generate match for each court in this time slot
+    for (const courtConfig of courtConfigs) {
+      const availablePlayers = getAvailablePlayers(
+        players,
+        playerStats,
+        playersUsedThisSlot,
+        slotStartTime,
+        gameDuration,
+        courtConfigs,
+        schedule,
+        courtConfig.courtNumber
+      );
+
+      const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
+      
+      if (availablePlayers.length >= playersNeeded) {
+        const match = createOptimalMatch(
+          availablePlayers,
+          playerStats,
+          slotStartTime,
+          slotEndTime,
+          courtConfig.courtNumber,
+          teammatePairs,
+          courtConfig.type
+        );
+
+        if (match) {
+          slotMatches.push(match);
+          
+          // Update player stats and mark players as used
+          const matchPlayers = [...match.team1, ...match.team2];
+          matchPlayers.forEach(player => {
+            playersUsedThisSlot.add(player);
+            updatePlayerStats(player, match, playerStats, gameDuration);
+          });
+        }
+      }
+    }
+
+    schedule.push({ timeSlot: slot, matches: slotMatches });
+  }
+
+  // Flatten schedule and assign IDs, clock times
+  const allMatches = schedule.flatMap(slot => slot.matches);
+  return finalizeMatches(allMatches, startTime, gameDuration);
+}
+
+// ==================== PLAYER AVAILABILITY ====================
+
+function initializePlayerStats(players: string[], courtCount: number): Map<string, PlayerStats> {
+  const stats = new Map<string, PlayerStats>();
   players.forEach((player) => {
-    playerStats.set(player, {
+    stats.set(player, {
       playTime: 0,
       restTime: 0,
       partners: new Set(),
@@ -60,156 +153,116 @@ export function generateSchedule(
       recentPartners: [],
       recentOpponents: [],
       consecutiveMatches: 0,
+      matchesPerCourt: new Map(),
     });
   });
+  return stats;
+}
 
-  const totalSlots = Math.floor(totalTime / gameDuration);
-  const matchesPerSlot = courts;
-  
-  const finalCourtConfigs = courtConfigs.length > 0 
-    ? courtConfigs 
-    : Array.from({ length: courts }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }));
+function getAvailablePlayers(
+  allPlayers: string[],
+  playerStats: Map<string, PlayerStats>,
+  playersUsedThisSlot: Set<string>,
+  slotStartTime: number,
+  gameDuration: number,
+  courtConfigs: CourtConfig[],
+  schedule: ScheduleSlot[],
+  currentCourt: number
+): string[] {
+  const minPlayersNeeded = courtConfigs.reduce((acc, config) => 
+    acc + (config.type === 'singles' ? 2 : 4), 0
+  );
 
-  let matchId = 0;
-
-  for (let slot = 0; slot < totalSlots; slot++) {
-    const slotStartTime = slot * gameDuration;
-    const slotEndTime = slotStartTime + gameDuration;
-    
-    // Get players scheduled in previous slot by court
-    const previousSlotPlayersByCourt = new Map<number, Set<string>>();
-    if (slot > 0) {
-      const prevSlotStart = (slot - 1) * gameDuration;
-      matches
-        .filter(m => m.startTime === prevSlotStart)
-        .forEach(m => {
-          const playersInMatch = new Set([...m.team1, ...m.team2]);
-          previousSlotPlayersByCourt.set(m.court, playersInMatch);
-        });
-    }
-    
-    // Determine available players for this slot (rest management)
-    const availablePlayers = new Set(players);
-    const minPlayersNeeded = finalCourtConfigs.reduce((acc, config) => 
-      acc + (config.type === 'singles' ? 2 : 4), 0
-    );
-    
-    players.forEach((player) => {
-      const stats = playerStats.get(player)!;
-      
-      // Only apply rest if player just finished playing
-      if (stats.lastMatchEnd === slotStartTime) {
-        // HARD LIMIT: Force rest after 3 consecutive matches
-        if (stats.consecutiveMatches >= 3 && availablePlayers.size > minPlayersNeeded) {
-          availablePlayers.delete(player);
-          stats.restTime += gameDuration;
-          stats.consecutiveMatches = 0;
-        }
-        // Strong encouragement: 85% rest after 2 consecutive
-        else if (stats.consecutiveMatches >= 2 && availablePlayers.size > minPlayersNeeded && Math.random() < 0.85) {
-          availablePlayers.delete(player);
-          stats.restTime += gameDuration;
-          stats.consecutiveMatches = 0;
-        }
-        // Light encouragement: 50% rest after 1 match
-        else if (stats.consecutiveMatches >= 1 && availablePlayers.size > minPlayersNeeded && Math.random() < 0.5) {
-          availablePlayers.delete(player);
-          stats.restTime += gameDuration;
-          stats.consecutiveMatches = 0;
-        }
+  // Get players from previous slot on OTHER courts (avoid cross-court conflicts)
+  const playersOnOtherCourtsPrevSlot = new Set<string>();
+  if (schedule.length > 0) {
+    const prevSlot = schedule[schedule.length - 1];
+    prevSlot.matches.forEach(match => {
+      if (match.court !== currentCourt) {
+        [...match.team1, ...match.team2].forEach(p => playersOnOtherCourtsPrevSlot.add(p));
       }
     });
-
-    // Track which players are scheduled in this slot (prevents court conflicts)
-    const playersScheduledThisSlot = new Set<string>();
-    
-    for (let court = 0; court < matchesPerSlot; court++) {
-      const courtConfig = finalCourtConfigs[court];
-      const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
-      const courtNumber = court + 1;
-      
-      // Get players on OTHER courts in previous slot (avoid cross-court conflicts)
-      const playersOnOtherCourtsPrevSlot = new Set<string>();
-      previousSlotPlayersByCourt.forEach((players, prevCourt) => {
-        if (prevCourt !== courtNumber) {
-          players.forEach(p => playersOnOtherCourtsPrevSlot.add(p));
-        }
-      });
-      
-      // Available for this specific court
-      const availableForThisCourt = Array.from(availablePlayers).filter(
-        p => !playersScheduledThisSlot.has(p) && !playersOnOtherCourtsPrevSlot.has(p)
-      );
-      
-      if (availableForThisCourt.length < playersNeeded) continue;
-      
-      const match = createOptimalMatch(
-        availableForThisCourt,
-        playerStats,
-        slotStartTime,
-        slotEndTime,
-        courtNumber,
-        teammatePairs,
-        courtConfig.type
-      );
-
-      if (match) {
-        const matchWithId = { ...match, id: `match-${matchId++}` };
-        
-        if (startTime) {
-          const [hours, minutes] = startTime.split(':').map(Number);
-          const baseMinutes = hours * 60 + minutes;
-          const matchStartMinutes = baseMinutes + slotStartTime;
-          const matchEndMinutes = matchStartMinutes + gameDuration;
-          matchWithId.clockStartTime = formatTime(matchStartMinutes);
-          matchWithId.clockEndTime = formatTime(matchEndMinutes);
-        }
-        
-        matches.push(matchWithId);
-        
-        // Update stats for all players in match
-        [...match.team1, ...match.team2].forEach((player) => {
-          const stats = playerStats.get(player)!;
-          stats.playTime += gameDuration;
-          stats.lastMatchEnd = slotEndTime;
-          stats.consecutiveMatches++;
-          availablePlayers.delete(player);
-          playersScheduledThisSlot.add(player);
-
-          // Track partnerships and opponents
-          if (match.isSingles) {
-            const opponent = match.team1[0] === player ? match.team2[0] : match.team1[0];
-            stats.opponents.add(opponent);
-            stats.recentOpponents.unshift(opponent);
-            if (stats.recentOpponents.length > 4) stats.recentOpponents.pop();
-          } else {
-            const [p1, p2] = match.team1 as [string, string];
-            const [p3, p4] = match.team2 as [string, string];
-            
-            let partner: string;
-            let opp1: string, opp2: string;
-            
-            if (player === p1) { partner = p2; opp1 = p3; opp2 = p4; }
-            else if (player === p2) { partner = p1; opp1 = p3; opp2 = p4; }
-            else if (player === p3) { partner = p4; opp1 = p1; opp2 = p2; }
-            else { partner = p3; opp1 = p1; opp2 = p2; }
-            
-            stats.partners.add(partner);
-            stats.recentPartners.unshift(partner);
-            if (stats.recentPartners.length > 3) stats.recentPartners.pop();
-            
-            stats.opponents.add(opp1);
-            stats.opponents.add(opp2);
-            stats.recentOpponents.unshift(opp1, opp2);
-            if (stats.recentOpponents.length > 4) stats.recentOpponents.pop();
-          }
-        });
-      }
-    }
   }
 
-  return matches;
+  return allPlayers.filter(player => {
+    // Already used in this time slot on another court
+    if (playersUsedThisSlot.has(player)) return false;
+    
+    // Was on different court in previous slot (avoid cross-court rush)
+    if (playersOnOtherCourtsPrevSlot.has(player)) return false;
+
+    const stats = playerStats.get(player)!;
+    
+    // Enforce rest requirements
+    if (stats.lastMatchEnd === slotStartTime) {
+      const availableCount = allPlayers.filter(p => 
+        !playersUsedThisSlot.has(p) && 
+        !playersOnOtherCourtsPrevSlot.has(p)
+      ).length;
+      
+      // Hard limit: Force rest after 3 consecutive matches
+      if (stats.consecutiveMatches >= 3 && availableCount > minPlayersNeeded) {
+        return false;
+      }
+      // 85% rest after 2 consecutive
+      if (stats.consecutiveMatches >= 2 && availableCount > minPlayersNeeded && Math.random() < 0.85) {
+        return false;
+      }
+      // 50% rest after 1 match
+      if (stats.consecutiveMatches >= 1 && availableCount > minPlayersNeeded && Math.random() < 0.5) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 }
+
+function updatePlayerStats(
+  player: string,
+  match: Match,
+  playerStats: Map<string, PlayerStats>,
+  gameDuration: number
+): void {
+  const stats = playerStats.get(player)!;
+  
+  stats.playTime += gameDuration;
+  stats.lastMatchEnd = match.endTime;
+  stats.consecutiveMatches++;
+  
+  // Track court usage
+  const courtCount = stats.matchesPerCourt.get(match.court) || 0;
+  stats.matchesPerCourt.set(match.court, courtCount + 1);
+
+  if (match.isSingles) {
+    const opponent = match.team1[0] === player ? match.team2[0] : match.team1[0];
+    stats.opponents.add(opponent);
+    stats.recentOpponents.unshift(opponent);
+    if (stats.recentOpponents.length > 6) stats.recentOpponents.pop();
+  } else {
+    const [p1, p2] = match.team1 as [string, string];
+    const [p3, p4] = match.team2 as [string, string];
+    
+    let partner: string;
+    let opp1: string, opp2: string;
+    
+    if (player === p1) { partner = p2; opp1 = p3; opp2 = p4; }
+    else if (player === p2) { partner = p1; opp1 = p3; opp2 = p4; }
+    else if (player === p3) { partner = p4; opp1 = p1; opp2 = p2; }
+    else { partner = p3; opp1 = p1; opp2 = p2; }
+    
+    stats.partners.add(partner);
+    stats.recentPartners.unshift(partner);
+    if (stats.recentPartners.length > 3) stats.recentPartners.pop();
+    
+    stats.opponents.add(opp1);
+    stats.opponents.add(opp2);
+    stats.recentOpponents.unshift(opp1, opp2);
+    if (stats.recentOpponents.length > 6) stats.recentOpponents.pop();
+  }
+}
+
+// ==================== MATCH CREATION ====================
 
 function createOptimalMatch(
   availablePlayers: string[],
@@ -225,20 +278,17 @@ function createOptimalMatch(
 
   // SINGLES LOGIC
   if (matchType === 'singles') {
-    // Pick 2 fairest players (least play time)
     const sortedByFairness = [...availablePlayers].sort((a, b) => {
       const statsA = playerStats.get(a)!;
       const statsB = playerStats.get(b)!;
       return statsA.playTime - statsB.playTime;
     });
     
-    // Get top candidates (players with similar low play time)
     const minPlayTime = playerStats.get(sortedByFairness[0])!.playTime;
     const fairCandidates = sortedByFairness.filter(p => 
       playerStats.get(p)!.playTime <= minPlayTime + 15
     );
     
-    // Randomize from fair candidates
     const shuffled = fairCandidates.sort(() => Math.random() - 0.5);
     const [p1, p2] = shuffled.slice(0, 2);
     
@@ -251,92 +301,37 @@ function createOptimalMatch(
       team2: [p2] as [string],
       status: 'scheduled',
       isSingles: true,
+      isLocked: false,
     };
   }
 
-  // DOUBLES LOGIC - Start from scratch with clean approach
-  
-  // Step 1: Identify the fairest players (those with least play time)
+  // DOUBLES LOGIC
   const sortedByFairness = [...availablePlayers].sort((a, b) => {
     const statsA = playerStats.get(a)!;
     const statsB = playerStats.get(b)!;
     return statsA.playTime - statsB.playTime;
   });
   
-  // Get players within fairness window (within 15 min of least played)
   const minPlayTime = playerStats.get(sortedByFairness[0])!.playTime;
   const fairCandidates = sortedByFairness.filter(p => 
     playerStats.get(p)!.playTime <= minPlayTime + 15
   );
   
-  // Need at least 4 candidates for doubles
   const candidatePool = fairCandidates.length >= 4 ? fairCandidates : sortedByFairness.slice(0, Math.min(8, sortedByFairness.length));
   
-  // Step 2: Try multiple random combinations from fair candidates
   let bestMatch: Match | null = null;
   let bestScore = -Infinity;
   const attempts = Math.min(50, candidatePool.length * 5);
   
   for (let i = 0; i < attempts; i++) {
-    // Randomly pick 4 players from candidate pool
     const shuffled = [...candidatePool].sort(() => Math.random() - 0.5);
     const fourPlayers = shuffled.slice(0, 4);
     
     if (fourPlayers.length < 4) continue;
     
     const [p1, p2, p3, p4] = fourPlayers;
+    const configs = generateTeamConfigurations(p1, p2, p3, p4, teammatePairs);
     
-    // Check for bound pairs (teammates that must stay together)
-    const isBoundPair12 = teammatePairs.some(pair => 
-      (pair.player1 === p1 && pair.player2 === p2) || (pair.player1 === p2 && pair.player2 === p1)
-    );
-    const isBoundPair13 = teammatePairs.some(pair => 
-      (pair.player1 === p1 && pair.player2 === p3) || (pair.player1 === p3 && pair.player2 === p1)
-    );
-    const isBoundPair14 = teammatePairs.some(pair => 
-      (pair.player1 === p1 && pair.player2 === p4) || (pair.player1 === p4 && pair.player2 === p1)
-    );
-    const isBoundPair23 = teammatePairs.some(pair => 
-      (pair.player1 === p2 && pair.player2 === p3) || (pair.player1 === p3 && pair.player2 === p2)
-    );
-    const isBoundPair24 = teammatePairs.some(pair => 
-      (pair.player1 === p2 && pair.player2 === p4) || (pair.player1 === p4 && pair.player2 === p2)
-    );
-    const isBoundPair34 = teammatePairs.some(pair => 
-      (pair.player1 === p3 && pair.player2 === p4) || (pair.player1 === p4 && pair.player2 === p3)
-    );
-    
-    // Generate valid team configurations based on bound pairs
-    const configs: [[string, string], [string, string]][] = [];
-    
-    if (isBoundPair12 && isBoundPair34) {
-      configs.push([[p1, p2], [p3, p4]]);
-    } else if (isBoundPair12) {
-      configs.push([[p1, p2], [p3, p4]]);
-    } else if (isBoundPair13 && isBoundPair24) {
-      configs.push([[p1, p3], [p2, p4]]);
-    } else if (isBoundPair13) {
-      configs.push([[p1, p3], [p2, p4]]);
-    } else if (isBoundPair14 && isBoundPair23) {
-      configs.push([[p1, p4], [p2, p3]]);
-    } else if (isBoundPair14) {
-      configs.push([[p1, p4], [p2, p3]]);
-    } else if (isBoundPair23) {
-      configs.push([[p2, p3], [p1, p4]]);
-    } else if (isBoundPair24) {
-      configs.push([[p2, p4], [p1, p3]]);
-    } else if (isBoundPair34) {
-      configs.push([[p3, p4], [p1, p2]]);
-    } else {
-      // No bound pairs, try all 3 configurations
-      configs.push(
-        [[p1, p2], [p3, p4]],
-        [[p1, p3], [p2, p4]],
-        [[p1, p4], [p2, p3]]
-      );
-    }
-    
-    // Evaluate each configuration
     for (const [team1, team2] of configs) {
       const score = evaluateMatch(team1, team2, playerStats, teammatePairs);
       
@@ -350,12 +345,56 @@ function createOptimalMatch(
           team1,
           team2,
           status: 'scheduled',
+          isLocked: false,
         };
       }
     }
   }
   
   return bestMatch;
+}
+
+function generateTeamConfigurations(
+  p1: string, p2: string, p3: string, p4: string,
+  teammatePairs: TeammatePair[]
+): [[string, string], [string, string]][] {
+  const isBoundPair = (player1: string, player2: string) => 
+    teammatePairs.some(pair => 
+      (pair.player1 === player1 && pair.player2 === player2) || 
+      (pair.player1 === player2 && pair.player2 === player1)
+    );
+  
+  const configs: [[string, string], [string, string]][] = [];
+  
+  // Check all possible bound pairs
+  if (isBoundPair(p1, p2) && isBoundPair(p3, p4)) {
+    configs.push([[p1, p2], [p3, p4]]);
+  } else if (isBoundPair(p1, p2)) {
+    configs.push([[p1, p2], [p3, p4]]);
+  } else if (isBoundPair(p1, p3) && isBoundPair(p2, p4)) {
+    configs.push([[p1, p3], [p2, p4]]);
+  } else if (isBoundPair(p1, p3)) {
+    configs.push([[p1, p3], [p2, p4]]);
+  } else if (isBoundPair(p1, p4) && isBoundPair(p2, p3)) {
+    configs.push([[p1, p4], [p2, p3]]);
+  } else if (isBoundPair(p1, p4)) {
+    configs.push([[p1, p4], [p2, p3]]);
+  } else if (isBoundPair(p2, p3)) {
+    configs.push([[p2, p3], [p1, p4]]);
+  } else if (isBoundPair(p2, p4)) {
+    configs.push([[p2, p4], [p1, p3]]);
+  } else if (isBoundPair(p3, p4)) {
+    configs.push([[p3, p4], [p1, p2]]);
+  } else {
+    // No bound pairs, try all 3 configurations
+    configs.push(
+      [[p1, p2], [p3, p4]],
+      [[p1, p3], [p2, p4]],
+      [[p1, p4], [p2, p3]]
+    );
+  }
+  
+  return configs;
 }
 
 function evaluateMatch(
@@ -377,12 +416,12 @@ function evaluateMatch(
   const playTimes = [stats1.playTime, stats2.playTime, stats3.playTime, stats4.playTime];
   const avgPlayTime = playTimes.reduce((a, b) => a + b, 0) / 4;
   const variance = playTimes.reduce((sum, time) => sum + Math.abs(time - avgPlayTime), 0);
-  score -= variance * 2; // Strong fairness penalty
+  score -= variance * 2;
   
-  // 2. RANDOMIZATION - Small random bonus (adds variety within fair choices)
+  // 2. RANDOMIZATION - Small random bonus
   score += Math.random() * 10;
   
-  // 3. AVOID RECENT PARTNERSHIPS (unless bound)
+  // 3. BOUND PAIRS - Strong reward
   const isBoundPair1 = teammatePairs.some(pair => 
     (pair.player1 === p1 && pair.player2 === p2) || (pair.player1 === p2 && pair.player2 === p1)
   );
@@ -390,11 +429,10 @@ function evaluateMatch(
     (pair.player1 === p3 && pair.player2 === p4) || (pair.player1 === p4 && pair.player2 === p3)
   );
   
-  // Reward bound pairs
   if (isBoundPair1) score += 100;
   if (isBoundPair2) score += 100;
   
-  // Penalize recent partnerships (unless bound)
+  // 4. AVOID RECENT PARTNERSHIPS (unless bound)
   if (!isBoundPair1) {
     if (stats1.recentPartners[0] === p2) score -= 40;
     else if (stats1.recentPartners.includes(p2)) score -= 20;
@@ -404,7 +442,7 @@ function evaluateMatch(
     else if (stats3.recentPartners.includes(p4)) score -= 20;
   }
   
-  // 4. AVOID RECENT OPPONENTS
+  // 5. AVOID RECENT OPPONENTS
   if (stats1.recentOpponents.slice(0, 2).includes(p3)) score -= 30;
   if (stats1.recentOpponents.slice(0, 2).includes(p4)) score -= 30;
   if (stats2.recentOpponents.slice(0, 2).includes(p3)) score -= 30;
@@ -413,11 +451,122 @@ function evaluateMatch(
   return score;
 }
 
-function formatTime(totalMinutes: number): string {
-  const hours = Math.floor(totalMinutes / 60) % 24;
-  const minutes = totalMinutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+// ==================== CONFLICT DETECTION & RESOLUTION ====================
+
+function detectCrossCourtConflicts(matches: Match[], timeSlot: number): string[] {
+  const matchesInSlot = matches.filter(m => m.startTime === timeSlot);
+  const playerCounts = new Map<string, number>();
+  
+  matchesInSlot.forEach(match => {
+    [...match.team1, ...match.team2].forEach(player => {
+      playerCounts.set(player, (playerCounts.get(player) || 0) + 1);
+    });
+  });
+  
+  return Array.from(playerCounts.entries())
+    .filter(([_, count]) => count > 1)
+    .map(([player, _]) => player);
 }
+
+function resolveConflictSwap(
+  matches: Match[],
+  conflictSlot: number,
+  court: number,
+  gameDuration: number
+): { success: boolean; modifiedMatches?: Match[]; swappedMatchNumber?: string } {
+  const conflictMatch = matches.find(m => m.startTime === conflictSlot && m.court === court);
+  if (!conflictMatch) return { success: false };
+  
+  // Look 2+ slots ahead on same court
+  const futureSlots = [conflictSlot + gameDuration * 2, conflictSlot + gameDuration * 3, conflictSlot + gameDuration * 4];
+  
+  for (const futureSlot of futureSlots) {
+    const futureMatch = matches.find(m => m.startTime === futureSlot && m.court === court);
+    if (!futureMatch) continue;
+    
+    // Check if swapping would create conflicts
+    const futureMatchPlayers = [...futureMatch.team1, ...futureMatch.team2];
+    const hasConflict = futureMatchPlayers.some(player => {
+      const otherMatches = matches.filter(m => m.startTime === conflictSlot && m.court !== court);
+      return otherMatches.some(m => [...m.team1, ...m.team2].includes(player));
+    });
+    
+    if (!hasConflict) {
+      // Perform swap
+      const newMatches = matches.map(m => {
+        if (m.id === conflictMatch.id) {
+          return { ...futureMatch, id: m.id, startTime: conflictSlot, endTime: conflictSlot + gameDuration };
+        } else if (m.id === futureMatch.id) {
+          return { ...conflictMatch, id: m.id, startTime: futureSlot, endTime: futureSlot + gameDuration };
+        }
+        return m;
+      });
+      
+      const courtLetter = String.fromCharCode(64 + court);
+      const matchNumber = matches.filter(m => m.court === court && m.startTime <= conflictSlot).length;
+      
+      return { 
+        success: true, 
+        modifiedMatches: newMatches,
+        swappedMatchNumber: `${courtLetter}${matchNumber}`
+      };
+    }
+  }
+  
+  return { success: false };
+}
+
+function resolveConflictModify(
+  matches: Match[],
+  conflictSlot: number,
+  court: number,
+  players: string[],
+  conflictingPlayers: string[],
+  gameDuration: number,
+  teammatePairs: TeammatePair[] = []
+): { success: boolean; modifiedMatches?: Match[]; modifiedMatchNumber?: string } {
+  const conflictMatch = matches.find(m => m.startTime === conflictSlot && m.court === court);
+  if (!conflictMatch) return { success: false };
+  
+  // Find available players (not on any court at this time)
+  const playersInUse = new Set<string>();
+  matches.filter(m => m.startTime === conflictSlot).forEach(m => {
+    [...m.team1, ...m.team2].forEach(p => playersInUse.add(p));
+  });
+  
+  const availablePlayers = players.filter(p => !playersInUse.has(p));
+  
+  if (availablePlayers.length < conflictingPlayers.length) {
+    return { success: false };
+  }
+  
+  // Replace conflicting players with available ones
+  const newTeam1 = [...conflictMatch.team1].map(p => 
+    conflictingPlayers.includes(p) ? availablePlayers.shift()! : p
+  ) as [string, string] | [string];
+  
+  const newTeam2 = [...conflictMatch.team2].map(p => 
+    conflictingPlayers.includes(p) ? availablePlayers.shift()! : p
+  ) as [string, string] | [string];
+  
+  const newMatches = matches.map(m => {
+    if (m.id === conflictMatch.id) {
+      return { ...m, team1: newTeam1, team2: newTeam2 };
+    }
+    return m;
+  });
+  
+  const courtLetter = String.fromCharCode(64 + court);
+  const matchNumber = matches.filter(m => m.court === court && m.startTime <= conflictSlot).length;
+  
+  return { 
+    success: true, 
+    modifiedMatches: newMatches,
+    modifiedMatchNumber: `${courtLetter}${matchNumber}`
+  };
+}
+
+// ==================== SCHEDULE REGENERATION ====================
 
 export function regenerateScheduleFromSlot(
   players: string[],
@@ -431,342 +580,156 @@ export function regenerateScheduleFromSlot(
   courtConfigs: CourtConfig[] = [],
   existingMatches: Match[] = []
 ): Match[] {
-  const playerStats = new Map<string, PlayerStats>();
-
-  // Initialize all players with zero stats
-  players.forEach((player) => {
-    playerStats.set(player, {
-      playTime: 0,
-      restTime: 0,
-      partners: new Set(),
-      opponents: new Set(),
-      lastMatchEnd: 0,
-      recentPartners: [],
-      recentOpponents: [],
-      consecutiveMatches: 0,
-    });
-  });
-
-  // Update stats from played matches
-  playedMatches.forEach((match) => {
-    [...match.team1, ...match.team2].forEach((player) => {
-      const stats = playerStats.get(player);
-      if (stats) {
-        stats.playTime += gameDuration;
-        stats.lastMatchEnd = match.endTime;
-        stats.consecutiveMatches++;
-
-        const [p1, p2] = match.team1;
-        const [p3, p4] = match.team2;
-        
-        if (player === p1) {
-          stats.partners.add(p2);
-          stats.recentPartners.unshift(p2);
-          stats.opponents.add(p3);
-          stats.opponents.add(p4);
-          stats.recentOpponents.unshift(p3, p4);
-        } else if (player === p2) {
-          stats.partners.add(p1);
-          stats.recentPartners.unshift(p1);
-          stats.opponents.add(p3);
-          stats.opponents.add(p4);
-          stats.recentOpponents.unshift(p3, p4);
-        } else if (player === p3) {
-          stats.partners.add(p4);
-          stats.recentPartners.unshift(p4);
-          stats.opponents.add(p1);
-          stats.opponents.add(p2);
-          stats.recentOpponents.unshift(p1, p2);
-        } else if (player === p4) {
-          stats.partners.add(p3);
-          stats.recentPartners.unshift(p3);
-          stats.opponents.add(p1);
-          stats.opponents.add(p2);
-          stats.recentOpponents.unshift(p1, p2);
-        }
-        
-        // Keep only last 3 partners and 6 opponents
-        if (stats.recentPartners.length > 3) stats.recentPartners.pop();
-        if (stats.recentOpponents.length > 6) stats.recentOpponents.pop();
-      }
-    });
-  });
-
-  // Generate new matches starting from fromSlotStart
-  const newMatches: Match[] = [...playedMatches];
-  const totalSlots = Math.floor(totalTime / gameDuration);
-  const matchesPerSlot = courts;
-  
-  // Find the first unplayed slot
-  const firstUnplayedSlot = Math.floor(fromSlotStart / gameDuration);
-  
-  // Preserve the current and up next matches (first 2 time slots) from existing schedule
-  const preservedMatches: Match[] = [];
-  if (existingMatches.length > 0) {
-    const currentSlotStart = firstUnplayedSlot * gameDuration;
-    const upNextSlotStart = (firstUnplayedSlot + 1) * gameDuration;
-    
-    // Get matches from current and up next slots
-    const slotsToPreserve = [currentSlotStart, upNextSlotStart];
-    
-    slotsToPreserve.forEach(slotStart => {
-      const matchesInSlot = existingMatches.filter(m => m.startTime === slotStart);
-      
-      // Check for court conflicts within this slot
-      const playersInSlot = new Set<string>();
-      let hasConflict = false;
-      
-      for (const match of matchesInSlot) {
-        const matchPlayers = [...match.team1, ...match.team2];
-        for (const player of matchPlayers) {
-          if (playersInSlot.has(player)) {
-            hasConflict = true;
-            break;
-          }
-          playersInSlot.add(player);
-        }
-        if (hasConflict) break;
-      }
-      
-      // Only preserve if no conflicts
-      if (!hasConflict && matchesInSlot.length > 0) {
-        preservedMatches.push(...matchesInSlot);
-        
-        // Update player stats for preserved matches
-        matchesInSlot.forEach(match => {
-          [...match.team1, ...match.team2].forEach((player) => {
-            const stats = playerStats.get(player);
-            if (stats) {
-              stats.playTime += gameDuration;
-              stats.lastMatchEnd = match.endTime;
-              stats.consecutiveMatches++;
-
-              if (match.isSingles) {
-                const opponent = match.team1[0] === player ? match.team2[0] : match.team1[0];
-                stats.opponents.add(opponent);
-                stats.recentOpponents.unshift(opponent);
-                if (stats.recentOpponents.length > 6) stats.recentOpponents.pop();
-              } else {
-                const [p1, p2] = match.team1 as [string, string];
-                const [p3, p4] = match.team2 as [string, string];
-                
-                if (player === p1) {
-                  stats.partners.add(p2);
-                  stats.recentPartners.unshift(p2);
-                  stats.opponents.add(p3);
-                  stats.opponents.add(p4);
-                  stats.recentOpponents.unshift(p3, p4);
-                } else if (player === p2) {
-                  stats.partners.add(p1);
-                  stats.recentPartners.unshift(p1);
-                  stats.opponents.add(p3);
-                  stats.opponents.add(p4);
-                  stats.recentOpponents.unshift(p3, p4);
-                } else if (player === p3) {
-                  stats.partners.add(p4);
-                  stats.recentPartners.unshift(p4);
-                  stats.opponents.add(p1);
-                  stats.opponents.add(p2);
-                  stats.recentOpponents.unshift(p1, p2);
-                } else if (player === p4) {
-                  stats.partners.add(p3);
-                  stats.recentPartners.unshift(p3);
-                  stats.opponents.add(p1);
-                  stats.opponents.add(p2);
-                  stats.recentOpponents.unshift(p1, p2);
-                }
-                
-                if (stats.recentPartners.length > 3) stats.recentPartners.pop();
-                if (stats.recentOpponents.length > 6) stats.recentOpponents.pop();
-              }
-            }
-          });
-        });
-      }
-    });
-    
-    // Add preserved matches to newMatches
-    newMatches.push(...preservedMatches);
-  }
-  
-  const preservedSlots = new Set(preservedMatches.map(m => m.startTime));
-  
-  // Initialize court configs if not provided (default to doubles)
   const finalCourtConfigs = courtConfigs.length > 0
     ? courtConfigs 
     : Array.from({ length: courts }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }));
 
-  const allTeams: [string, string][] = [];
-  for (let i = 0; i < players.length; i++) {
-    for (let j = i + 1; j < players.length; j++) {
-      allTeams.push([players[i], players[j]]);
+  const firstUnplayedSlot = Math.floor(fromSlotStart / gameDuration);
+  const currentSlotStart = firstUnplayedSlot * gameDuration;
+  const upNextSlotStart = (firstUnplayedSlot + 1) * gameDuration;
+  
+  // Check for conflicts in current and up next slots
+  const preservedMatches: Match[] = [];
+  const slotsToCheck = [currentSlotStart, upNextSlotStart];
+  
+  for (const slotStart of slotsToCheck) {
+    const matchesInSlot = existingMatches.filter(m => m.startTime === slotStart);
+    const conflicts = detectCrossCourtConflicts(existingMatches, slotStart);
+    
+    if (conflicts.length === 0 && matchesInSlot.length > 0) {
+      // No conflicts - preserve these matches
+      preservedMatches.push(...matchesInSlot.map(m => ({ ...m, isLocked: true })));
+    } else if (conflicts.length > 0) {
+      // Try to resolve conflicts
+      for (const court of finalCourtConfigs) {
+        const courtMatch = matchesInSlot.find(m => m.court === court.courtNumber);
+        if (!courtMatch) continue;
+        
+        const matchPlayers = [...courtMatch.team1, ...courtMatch.team2];
+        const hasConflict = matchPlayers.some(p => conflicts.includes(p));
+        
+        if (!hasConflict) {
+          preservedMatches.push({ ...courtMatch, isLocked: true });
+        } else {
+          // Try swap strategy
+          const swapResult = resolveConflictSwap(existingMatches, slotStart, court.courtNumber, gameDuration);
+          if (swapResult.success && swapResult.modifiedMatches) {
+            const resolvedMatch = swapResult.modifiedMatches.find(
+              m => m.startTime === slotStart && m.court === court.courtNumber
+            );
+            if (resolvedMatch) {
+              preservedMatches.push({ ...resolvedMatch, isLocked: true });
+            }
+          } else {
+            // Try modify strategy
+            const modifyResult = resolveConflictModify(
+              existingMatches, 
+              slotStart, 
+              court.courtNumber, 
+              players, 
+              conflicts,
+              gameDuration,
+              teammatePairs
+            );
+            if (modifyResult.success && modifyResult.modifiedMatches) {
+              const resolvedMatch = modifyResult.modifiedMatches.find(
+                m => m.startTime === slotStart && m.court === court.courtNumber
+              );
+              if (resolvedMatch) {
+                preservedMatches.push({ ...resolvedMatch, isLocked: true });
+              }
+            }
+          }
+        }
+      }
     }
   }
-
-  let matchId = playedMatches.length + preservedMatches.length;
+  
+  // Initialize player stats from played matches
+  const playerStats = initializePlayerStats(players, courts);
+  
+  [...playedMatches, ...preservedMatches].forEach((match) => {
+    [...match.team1, ...match.team2].forEach((player) => {
+      updatePlayerStats(player, match, playerStats, gameDuration);
+    });
+  });
+  
+  // Generate remaining schedule
+  const totalSlots = Math.floor(totalTime / gameDuration);
+  const preservedSlots = new Set(preservedMatches.map(m => m.startTime));
+  const newMatches: Match[] = [...playedMatches, ...preservedMatches];
   const startSlot = Math.floor(fromSlotStart / gameDuration);
-
+  
   for (let slot = startSlot; slot < totalSlots; slot++) {
     const slotStartTime = slot * gameDuration;
     const slotEndTime = slotStartTime + gameDuration;
     
-    // Skip if this slot was preserved
-    if (preservedSlots.has(slotStartTime)) {
-      continue;
-    }
-    const availablePlayers = new Set(players);
+    if (preservedSlots.has(slotStartTime)) continue;
     
-    // Get players scheduled in previous slot by court to prevent cross-court disruptions
-    const previousSlotPlayersByCourt = new Map<number, Set<string>>();
-    if (slot > 0) {
-      const prevSlotStart = (slot - 1) * gameDuration;
-      newMatches
-        .filter(m => m.startTime === prevSlotStart)
-        .forEach(m => {
-          const playersInMatch = new Set([...m.team1, ...m.team2]);
-          previousSlotPlayersByCourt.set(m.court, playersInMatch);
-        });
-    }
+    const playersUsedThisSlot = new Set<string>();
     
-    // Enforce rest after consecutive matches with graduated approach
-    players.forEach((player) => {
-      const stats = playerStats.get(player);
-      if (!stats) return;
-      
-      const minPlayersNeeded = finalCourtConfigs.reduce((acc, config) => 
-        acc + (config.type === 'singles' ? 2 : 4), 0
-      );
-      
-      // Force rest after 3 consecutive matches (hard limit)
-      if (stats.lastMatchEnd === slotStartTime && stats.consecutiveMatches >= 3) {
-        if (availablePlayers.size > minPlayersNeeded) {
-          availablePlayers.delete(player);
-          stats.restTime += gameDuration;
-          stats.consecutiveMatches = 0;
-        }
-      }
-      // Strong encouragement (85%) to rest after 2 consecutive matches
-      else if (stats.lastMatchEnd === slotStartTime && stats.consecutiveMatches >= 2) {
-        if (availablePlayers.size > minPlayersNeeded && Math.random() < 0.85) {
-          availablePlayers.delete(player);
-          stats.restTime += gameDuration;
-          stats.consecutiveMatches = 0;
-        }
-      }
-      // Light encouragement (50%) to rest after 1 match
-      else if (stats.lastMatchEnd === slotStartTime && availablePlayers.size > minPlayersNeeded) {
-        if (Math.random() < 0.5) {
-          availablePlayers.delete(player);
-          stats.restTime += gameDuration;
-          stats.consecutiveMatches = 0;
-        }
-      }
-    });
-
-    // Track which players are already scheduled in this time slot (prevents court conflicts)
-    const playersScheduledThisSlot = new Set<string>();
-    
-    for (let court = 0; court < matchesPerSlot; court++) {
-      const courtConfig = finalCourtConfigs[court];
-      const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
-      const courtNumber = court + 1;
-      
-      // Get players who were on THIS court in previous slot (they can stay on same court)
-      const playersOnThisCourtPrevSlot = previousSlotPlayersByCourt.get(courtNumber) || new Set();
-      
-      // Get players who were on OTHER courts in previous slot (they should NOT be on this court)
-      const playersOnOtherCourtsPrevSlot = new Set<string>();
-      previousSlotPlayersByCourt.forEach((players, prevCourt) => {
-        if (prevCourt !== courtNumber) {
-          players.forEach(p => playersOnOtherCourtsPrevSlot.add(p));
-        }
-      });
-      
-      // Filter out players already scheduled on other courts in this slot
-      // AND players who were on different courts in previous slot (prevents cross-court rushes)
-      const availableForThisCourt = Array.from(availablePlayers).filter(
-        p => !playersScheduledThisSlot.has(p) && !playersOnOtherCourtsPrevSlot.has(p)
-      );
-      
-      if (availableForThisCourt.length < playersNeeded) continue;
-      
-      const match = createOptimalMatch(
-        availableForThisCourt,
+    for (const courtConfig of finalCourtConfigs) {
+      const availablePlayers = getAvailablePlayers(
+        players,
         playerStats,
+        playersUsedThisSlot,
         slotStartTime,
-        slotEndTime,
-        court + 1,
-        teammatePairs,
-        courtConfig.type
+        gameDuration,
+        finalCourtConfigs,
+        newMatches.map(m => ({ timeSlot: Math.floor(m.startTime / gameDuration), matches: [m] })),
+        courtConfig.courtNumber
       );
-
-      if (match) {
-        const matchWithId = { ...match, id: `match-${matchId++}` };
+      
+      const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
+      
+      if (availablePlayers.length >= playersNeeded) {
+        const match = createOptimalMatch(
+          availablePlayers,
+          playerStats,
+          slotStartTime,
+          slotEndTime,
+          courtConfig.courtNumber,
+          teammatePairs,
+          courtConfig.type
+        );
         
-        if (startTime) {
-          const [hours, minutes] = startTime.split(':').map(Number);
-          const baseMinutes = hours * 60 + minutes;
+        if (match) {
+          newMatches.push(match);
           
-          const matchStartMinutes = baseMinutes + slotStartTime;
-          const matchEndMinutes = matchStartMinutes + gameDuration;
-          
-          matchWithId.clockStartTime = formatTime(matchStartMinutes);
-          matchWithId.clockEndTime = formatTime(matchEndMinutes);
+          const matchPlayers = [...match.team1, ...match.team2];
+          matchPlayers.forEach(player => {
+            playersUsedThisSlot.add(player);
+            updatePlayerStats(player, match, playerStats, gameDuration);
+          });
         }
-        
-        newMatches.push(matchWithId);
-        
-        [...match.team1, ...match.team2].forEach((player) => {
-          const stats = playerStats.get(player)!;
-          stats.playTime += gameDuration;
-          stats.lastMatchEnd = slotEndTime;
-          stats.consecutiveMatches++;
-          availablePlayers.delete(player);
-          playersScheduledThisSlot.add(player); // Prevent same player on multiple courts
-
-          if (match.isSingles) {
-            const opponent = match.team1[0] === player ? match.team2[0] : match.team1[0];
-            stats.opponents.add(opponent);
-            stats.recentOpponents.unshift(opponent);
-            if (stats.recentOpponents.length > 6) stats.recentOpponents.pop();
-          } else {
-            const [p1, p2] = match.team1 as [string, string];
-            const [p3, p4] = match.team2 as [string, string];
-            
-            if (player === p1) {
-              stats.partners.add(p2);
-              stats.recentPartners.unshift(p2);
-              stats.opponents.add(p3);
-              stats.opponents.add(p4);
-              stats.recentOpponents.unshift(p3, p4);
-            } else if (player === p2) {
-              stats.partners.add(p1);
-              stats.recentPartners.unshift(p1);
-              stats.opponents.add(p3);
-              stats.opponents.add(p4);
-              stats.recentOpponents.unshift(p3, p4);
-            } else if (player === p3) {
-              stats.partners.add(p4);
-              stats.recentPartners.unshift(p4);
-              stats.opponents.add(p1);
-              stats.opponents.add(p2);
-              stats.recentOpponents.unshift(p1, p2);
-            } else {
-              stats.partners.add(p3);
-              stats.recentPartners.unshift(p3);
-              stats.opponents.add(p1);
-              stats.opponents.add(p2);
-              stats.recentOpponents.unshift(p1, p2);
-            }
-            
-            // Keep only last 3 partners and 6 opponents
-            if (stats.recentPartners.length > 3) stats.recentPartners.pop();
-            if (stats.recentOpponents.length > 6) stats.recentOpponents.pop();
-          }
-        });
       }
     }
   }
+  
+  return finalizeMatches(newMatches, startTime, gameDuration);
+}
 
-  return newMatches;
+// ==================== UTILITIES ====================
+
+function finalizeMatches(matches: Match[], startTime?: string, gameDuration?: number): Match[] {
+  return matches.map((match, index) => {
+    const finalMatch = { ...match, id: match.id || `match-${index}` };
+    
+    if (startTime && gameDuration && !finalMatch.clockStartTime) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const baseMinutes = hours * 60 + minutes;
+      const matchStartMinutes = baseMinutes + match.startTime;
+      const matchEndMinutes = matchStartMinutes + gameDuration;
+      finalMatch.clockStartTime = formatTime(matchStartMinutes);
+      finalMatch.clockEndTime = formatTime(matchEndMinutes);
+    }
+    
+    return finalMatch;
+  });
+}
+
+function formatTime(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
