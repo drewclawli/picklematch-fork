@@ -245,7 +245,7 @@ const Index = () => {
               <p className="text-muted-foreground">Please complete game setup and add players first</p>
             </div>}
 
-          {activeSection === "checkin" && gameCode && <CheckInOut gameCode={gameCode} players={players} onPlayersUpdate={handlePlayersUpdate} matches={matches} matchScores={matchScores} teammatePairs={gameConfig?.teammatePairs} />}
+          {activeSection === "checkin" && gameCode && <CheckInOut gameCode={gameCode} players={players} onPlayersUpdate={handlePlayersUpdate} matches={matches} matchScores={matchScores} teammatePairs={gameConfig?.teammatePairs} onNavigateToMatches={() => setActiveSection("scheduler")} />}
 
           {activeSection === "checkin" && !gameCode && <div className="text-center py-12">
               <p className="text-muted-foreground">Please complete game setup first</p>

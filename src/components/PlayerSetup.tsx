@@ -19,8 +19,14 @@ export const PlayerSetup = ({ onComplete, initialPlayers = [], initialTeammatePa
   const [selectedForPairing, setSelectedForPairing] = useState<string | null>(null);
 
   const addPlayer = () => {
-    if (currentName.trim() && players.length < 20) {
-      setPlayers([...players, currentName.trim()]);
+    const trimmedName = currentName.trim();
+    if (trimmedName && players.length < 20) {
+      // Check for duplicate names (case-insensitive)
+      if (players.some(p => p.toLowerCase() === trimmedName.toLowerCase())) {
+        toast.error("This player name already exists");
+        return;
+      }
+      setPlayers([...players, trimmedName]);
       setCurrentName("");
     }
   };
@@ -179,9 +185,9 @@ export const PlayerSetup = ({ onComplete, initialPlayers = [], initialTeammatePa
         onClick={() => onComplete(players, teammatePairs)}
         disabled={players.length < 2}
         size="lg"
-        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+        className="w-full h-14 text-lg font-semibold"
       >
-        Continue ({players.length} players)
+        Continue to Matches ({players.length} players)
       </Button>
     </div>
   );

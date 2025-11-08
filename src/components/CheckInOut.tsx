@@ -15,9 +15,10 @@ interface CheckInOutProps {
   matches?: Match[];
   matchScores?: Map<string, { team1: number; team2: number }>;
   teammatePairs?: { player1: string; player2: string }[];
+  onNavigateToMatches?: () => void;
 }
 
-export const CheckInOut = ({ gameCode, players, onPlayersUpdate, matches = [], matchScores = new Map(), teammatePairs = [] }: CheckInOutProps) => {
+export const CheckInOut = ({ gameCode, players, onPlayersUpdate, matches = [], matchScores = new Map(), teammatePairs = [], onNavigateToMatches }: CheckInOutProps) => {
   const [copied, setCopied] = useState(false);
   const gameUrl = `${window.location.origin}?join=${gameCode}`;
 
@@ -157,7 +158,12 @@ export const CheckInOut = ({ gameCode, players, onPlayersUpdate, matches = [], m
       </Card>
 
       <PlayerSetup
-        onComplete={(playerList, pairs) => onPlayersUpdate(playerList, pairs)}
+        onComplete={(playerList, pairs) => {
+          onPlayersUpdate(playerList, pairs);
+          if (onNavigateToMatches) {
+            onNavigateToMatches();
+          }
+        }}
         initialPlayers={players}
         initialTeammatePairs={teammatePairs}
       />
