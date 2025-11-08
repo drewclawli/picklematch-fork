@@ -207,20 +207,15 @@ const Index = () => {
     }
   };
   const handleScheduleUpdate = async (newMatches: Match[], newPlayers: string[]) => {
-    // Preserve scores in matches before updating
-    const matchesWithScores = newMatches.map(match => ({
-      ...match,
-      score: matchScores.get(match.id)
-    }));
-    
-    setMatches(matchesWithScores);
+    // Matches should already have scores embedded, just save as-is
+    setMatches(newMatches);
     setPlayers(newPlayers);
     if (gameId) {
       try {
         const {
           error
         } = await supabase.from('games').update({
-          matches: matchesWithScores as any,
+          matches: newMatches as any,
           players: newPlayers
         }).eq('id', gameId);
         if (error) throw error;

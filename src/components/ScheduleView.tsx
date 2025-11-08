@@ -107,10 +107,13 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     const updatedPlayers = [...new Set([...allEditedPlayers, ...allPlayers])];
 
     const matchIndex = matches.findIndex(m => m.id === editingMatch);
-    const playedMatches = matches.slice(0, matchIndex).map(m => ({
-      ...m,
-      score: normalizeScore(matchScores.get(m.id))
-    }));
+    const playedMatches = matches.slice(0, matchIndex).map(m => {
+      const score = matchScores.get(m.id);
+      return {
+        ...m,
+        score: score ? normalizeScore(score) : m.score ? normalizeScore(m.score) : undefined
+      };
+    });
 
     const updatedMatch = {
       ...match,
@@ -150,16 +153,26 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     const team1Score = typeof pending.team1 === 'number' ? pending.team1 : Number(pending.team1);
     const team2Score = typeof pending.team2 === 'number' ? pending.team2 : Number(pending.team2);
 
+    // Update scores state
     const newScores = new Map(matchScores);
     newScores.set(matchId, { team1: team1Score, team2: team2Score });
-    
-    // Update matches with the new score
-    const updatedMatches = matches.map(m => 
-      m.id === matchId ? { ...m, score: { team1: team1Score, team2: team2Score } } : m
-    );
-    
     onMatchScoresUpdate(newScores);
-    onScheduleUpdate(updatedMatches, allPlayers); // This will save to DB and trigger realtime sync
+    
+    // Update ALL matches to include ALL scores (both new and existing)
+    const updatedMatches = matches.map(m => {
+      if (m.id === matchId) {
+        return { ...m, score: { team1: team1Score, team2: team2Score } };
+      }
+      // Preserve existing scores from matchScores state
+      const existingScore = matchScores.get(m.id);
+      if (existingScore) {
+        return { ...m, score: existingScore };
+      }
+      return m;
+    });
+    
+    // Save to database with all scores preserved
+    onScheduleUpdate(updatedMatches, allPlayers);
     
     const newPending = new Map(pendingScores);
     newPending.delete(matchId);
@@ -198,6 +211,22 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
       const newScores = new Map(matchScores);
       newScores.delete(matchId);
       onMatchScoresUpdate(newScores);
+      
+      // Update matches to remove the score
+      const updatedMatches = matches.map(m => {
+        if (m.id === matchId) {
+          const { score, ...rest } = m;
+          return rest as Match;
+        }
+        // Preserve other scores
+        const existingScore = matchScores.get(m.id);
+        if (existingScore && m.id !== matchId) {
+          return { ...m, score: existingScore };
+        }
+        return m;
+      });
+      
+      onScheduleUpdate(updatedMatches, allPlayers);
     }
   };
 
@@ -273,10 +302,13 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
           };
 
           const laterIndex = matches.findIndex(m => m.id === later.id);
-          const playedMatches = matches.slice(0, laterIndex).map(m => ({
-            ...m,
-            score: normalizeScore(scores.get(m.id))
-          }));
+          const playedMatches = matches.slice(0, laterIndex).map(m => {
+            const score = scores.get(m.id);
+            return {
+              ...m,
+              score: score ? normalizeScore(score) : m.score ? normalizeScore(m.score) : undefined
+            };
+          });
 
           const newMatches = regenerateScheduleFromSlot(
             allPlayers,
@@ -307,11 +339,14 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
     if (Math.abs(timeDifference) > 5) {
       const matchIndex = matches.findIndex(m => m.id === completedMatchId);
-      const playedMatches = matches.slice(0, matchIndex + 1).map(m => ({
-        ...m,
-        score: normalizeScore(matchScores.get(m.id)),
-        actualEndTime: m.id === completedMatchId ? actualEndTime : m.endTime,
-      }));
+      const playedMatches = matches.slice(0, matchIndex + 1).map(m => {
+        const score = matchScores.get(m.id);
+        return {
+          ...m,
+          score: score ? normalizeScore(score) : m.score ? normalizeScore(m.score) : undefined,
+          actualEndTime: m.id === completedMatchId ? actualEndTime : m.endTime,
+        };
+      });
 
       const remainingTime = gameConfig.totalTime - actualEndTime;
       const potentialNewMatches = Math.floor(remainingTime / gameConfig.gameDuration) * gameConfig.courts;
@@ -354,10 +389,13 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     if (firstUnplayedMatchIndex === -1) return;
 
     const firstUnplayedMatch = matches[firstUnplayedMatchIndex];
-    const playedMatches = matches.slice(0, firstUnplayedMatchIndex).map(m => ({
-      ...m,
-      score: normalizeScore(matchScores.get(m.id))
-    }));
+    const playedMatches = matches.slice(0, firstUnplayedMatchIndex).map(m => {
+      const score = matchScores.get(m.id);
+      return {
+        ...m,
+        score: score ? normalizeScore(score) : m.score ? normalizeScore(m.score) : undefined
+      };
+    });
 
     const newMatches = regenerateScheduleFromSlot(
       allPlayers,
