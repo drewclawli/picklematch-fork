@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { CombinedSetup } from "@/components/CombinedSetup";
 import { GameCodeDialog } from "@/components/GameCodeDialog";
 import { ScheduleView } from "@/components/ScheduleView";
-import { generateSchedule, Match } from "@/lib/scheduler";
+import { generateSchedule, Match, CourtConfig } from "@/lib/scheduler";
 import { Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -96,7 +96,8 @@ const Index = () => {
       config.totalTime,
       config.courts,
       config.startTime,
-      config.teammatePairs
+      config.teammatePairs,
+      config.courtConfigs
     );
     setMatches(schedule);
     setPlayers(playerList);

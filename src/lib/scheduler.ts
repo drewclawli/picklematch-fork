@@ -5,14 +5,20 @@ export interface Match {
   endTime: number;
   clockStartTime?: string;
   clockEndTime?: string;
-  team1: [string, string];
-  team2: [string, string];
+  team1: [string, string] | [string];
+  team2: [string, string] | [string];
   score?: {
     team1: number;
     team2: number;
   };
   status?: 'scheduled' | 'in-progress' | 'completed';
   actualEndTime?: number;
+  isSingles?: boolean;
+}
+
+export interface CourtConfig {
+  courtNumber: number;
+  type: 'singles' | 'doubles';
 }
 
 export interface TeammatePair {
@@ -34,7 +40,8 @@ export function generateSchedule(
   totalTime: number,
   courts: number,
   startTime?: string,
-  teammatePairs: TeammatePair[] = []
+  teammatePairs: TeammatePair[] = [],
+  courtConfigs: CourtConfig[] = []
 ): Match[] {
   const matches: Match[] = [];
   const playerStats = new Map<string, PlayerStats>();
@@ -51,8 +58,12 @@ export function generateSchedule(
   });
 
   const totalSlots = Math.floor(totalTime / gameDuration);
-  const playersPerMatch = 4;
   const matchesPerSlot = courts;
+  
+  // Initialize court configs if not provided (default to doubles)
+  const finalCourtConfigs = courtConfigs.length > 0 
+    ? courtConfigs 
+    : Array.from({ length: courts }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }));
 
   // Generate all possible team combinations
   const allTeams: [string, string][] = [];
@@ -74,13 +85,21 @@ export function generateSchedule(
       const stats = playerStats.get(player)!;
       if (stats.lastMatchEnd === slotStartTime) {
         // Player just finished, can rest
-        if (Math.random() > 0.5 && availablePlayers.size > playersPerMatch * matchesPerSlot) {
+        const minPlayersNeeded = finalCourtConfigs.reduce((acc, config) => 
+          acc + (config.type === 'singles' ? 2 : 4), 0
+        );
+        if (Math.random() > 0.5 && availablePlayers.size > minPlayersNeeded) {
           availablePlayers.delete(player);
         }
       }
     });
 
-    for (let court = 0; court < matchesPerSlot && availablePlayers.size >= playersPerMatch; court++) {
+    for (let court = 0; court < matchesPerSlot; court++) {
+      const courtConfig = finalCourtConfigs[court];
+      const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
+      
+      if (availablePlayers.size < playersNeeded) continue;
+      
       const match = createOptimalMatch(
         Array.from(availablePlayers),
         playerStats,
@@ -88,7 +107,8 @@ export function generateSchedule(
         slotStartTime,
         slotEndTime,
         court + 1,
-        teammatePairs
+        teammatePairs,
+        courtConfig.type
       );
 
       if (match) {
@@ -116,25 +136,30 @@ export function generateSchedule(
           availablePlayers.delete(player);
 
           // Update partners and opponents
-          const [p1, p2] = match.team1;
-          const [p3, p4] = match.team2;
-          
-          if (player === p1) {
-            stats.partners.add(p2);
-            stats.opponents.add(p3);
-            stats.opponents.add(p4);
-          } else if (player === p2) {
-            stats.partners.add(p1);
-            stats.opponents.add(p3);
-            stats.opponents.add(p4);
-          } else if (player === p3) {
-            stats.partners.add(p4);
-            stats.opponents.add(p1);
-            stats.opponents.add(p2);
+          if (match.isSingles) {
+            const opponent = match.team1[0] === player ? match.team2[0] : match.team1[0];
+            stats.opponents.add(opponent);
           } else {
-            stats.partners.add(p3);
-            stats.opponents.add(p1);
-            stats.opponents.add(p2);
+            const [p1, p2] = match.team1 as [string, string];
+            const [p3, p4] = match.team2 as [string, string];
+            
+            if (player === p1) {
+              stats.partners.add(p2);
+              stats.opponents.add(p3);
+              stats.opponents.add(p4);
+            } else if (player === p2) {
+              stats.partners.add(p1);
+              stats.opponents.add(p3);
+              stats.opponents.add(p4);
+            } else if (player === p3) {
+              stats.partners.add(p4);
+              stats.opponents.add(p1);
+              stats.opponents.add(p2);
+            } else {
+              stats.partners.add(p3);
+              stats.opponents.add(p1);
+              stats.opponents.add(p2);
+            }
           }
         });
       }
@@ -151,9 +176,59 @@ function createOptimalMatch(
   startTime: number,
   endTime: number,
   court: number,
-  teammatePairs: TeammatePair[] = []
+  teammatePairs: TeammatePair[] = [],
+  matchType: 'singles' | 'doubles' = 'doubles'
 ): Match | null {
-  if (availablePlayers.length < 4) return null;
+  const playersNeeded = matchType === 'singles' ? 2 : 4;
+  if (availablePlayers.length < playersNeeded) return null;
+
+  // Handle singles matches
+  if (matchType === 'singles') {
+    const sortedPlayers = [...availablePlayers].sort((a, b) => {
+      const statsA = playerStats.get(a)!;
+      const statsB = playerStats.get(b)!;
+      return statsA.playTime - statsB.playTime;
+    });
+
+    let bestScore = -Infinity;
+    let bestMatch: Match | null = null;
+    const maxAttempts = Math.min(20, sortedPlayers.length * 5);
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const selectedIndices = new Set<number>();
+      while (selectedIndices.size < 2) {
+        const idx = Math.floor(Math.pow(Math.random(), 2) * sortedPlayers.length);
+        selectedIndices.add(idx);
+      }
+      const selected = Array.from(selectedIndices).map(i => sortedPlayers[i]);
+      const [p1, p2] = selected;
+
+      const stats1 = playerStats.get(p1)!;
+      const stats2 = playerStats.get(p2)!;
+
+      let score = 0;
+      if (stats1.opponents.has(p2)) score -= 5;
+      const avgPlayTime = (stats1.playTime + stats2.playTime) / 2;
+      const playTimeVariance = Math.abs(stats1.playTime - avgPlayTime) + Math.abs(stats2.playTime - avgPlayTime);
+      score -= playTimeVariance / 10;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = {
+          id: "",
+          court,
+          startTime,
+          endTime,
+          team1: [p1] as [string],
+          team2: [p2] as [string],
+          status: 'scheduled',
+          isSingles: true,
+        };
+      }
+    }
+
+    return bestMatch;
+  }
 
   // Sort players by play time (prioritize those who played less)
   const sortedPlayers = [...availablePlayers].sort((a, b) => {
@@ -315,7 +390,8 @@ export function regenerateScheduleFromSlot(
   totalTime: number,
   courts: number,
   startTime?: string,
-  teammatePairs: TeammatePair[] = []
+  teammatePairs: TeammatePair[] = [],
+  courtConfigs: CourtConfig[] = []
 ): Match[] {
   const playerStats = new Map<string, PlayerStats>();
 
@@ -365,8 +441,12 @@ export function regenerateScheduleFromSlot(
   // Generate new matches starting from fromSlotStart
   const newMatches: Match[] = [...playedMatches];
   const totalSlots = Math.floor(totalTime / gameDuration);
-  const playersPerMatch = 4;
   const matchesPerSlot = courts;
+  
+  // Initialize court configs if not provided (default to doubles)
+  const finalCourtConfigs = courtConfigs.length > 0 
+    ? courtConfigs 
+    : Array.from({ length: courts }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }));
 
   const allTeams: [string, string][] = [];
   for (let i = 0; i < players.length; i++) {
@@ -386,13 +466,21 @@ export function regenerateScheduleFromSlot(
     players.forEach((player) => {
       const stats = playerStats.get(player);
       if (stats && stats.lastMatchEnd === slotStartTime) {
-        if (Math.random() > 0.5 && availablePlayers.size > playersPerMatch * matchesPerSlot) {
+        const minPlayersNeeded = finalCourtConfigs.reduce((acc, config) => 
+          acc + (config.type === 'singles' ? 2 : 4), 0
+        );
+        if (Math.random() > 0.5 && availablePlayers.size > minPlayersNeeded) {
           availablePlayers.delete(player);
         }
       }
     });
 
-    for (let court = 0; court < matchesPerSlot && availablePlayers.size >= playersPerMatch; court++) {
+    for (let court = 0; court < matchesPerSlot; court++) {
+      const courtConfig = finalCourtConfigs[court];
+      const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
+      
+      if (availablePlayers.size < playersNeeded) continue;
+      
       const match = createOptimalMatch(
         Array.from(availablePlayers),
         playerStats,
@@ -400,7 +488,8 @@ export function regenerateScheduleFromSlot(
         slotStartTime,
         slotEndTime,
         court + 1,
-        teammatePairs
+        teammatePairs,
+        courtConfig.type
       );
 
       if (match) {
@@ -425,25 +514,30 @@ export function regenerateScheduleFromSlot(
           stats.lastMatchEnd = slotEndTime;
           availablePlayers.delete(player);
 
-          const [p1, p2] = match.team1;
-          const [p3, p4] = match.team2;
-          
-          if (player === p1) {
-            stats.partners.add(p2);
-            stats.opponents.add(p3);
-            stats.opponents.add(p4);
-          } else if (player === p2) {
-            stats.partners.add(p1);
-            stats.opponents.add(p3);
-            stats.opponents.add(p4);
-          } else if (player === p3) {
-            stats.partners.add(p4);
-            stats.opponents.add(p1);
-            stats.opponents.add(p2);
+          if (match.isSingles) {
+            const opponent = match.team1[0] === player ? match.team2[0] : match.team1[0];
+            stats.opponents.add(opponent);
           } else {
-            stats.partners.add(p3);
-            stats.opponents.add(p1);
-            stats.opponents.add(p2);
+            const [p1, p2] = match.team1 as [string, string];
+            const [p3, p4] = match.team2 as [string, string];
+            
+            if (player === p1) {
+              stats.partners.add(p2);
+              stats.opponents.add(p3);
+              stats.opponents.add(p4);
+            } else if (player === p2) {
+              stats.partners.add(p1);
+              stats.opponents.add(p3);
+              stats.opponents.add(p4);
+            } else if (player === p3) {
+              stats.partners.add(p4);
+              stats.opponents.add(p1);
+              stats.opponents.add(p2);
+            } else {
+              stats.partners.add(p3);
+              stats.opponents.add(p1);
+              stats.opponents.add(p2);
+            }
           }
         });
       }

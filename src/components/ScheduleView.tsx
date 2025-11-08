@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
-import { Match, regenerateScheduleFromSlot } from "@/lib/scheduler";
+import { Match, regenerateScheduleFromSlot, CourtConfig } from "@/lib/scheduler";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trophy, Clock, Users, Share2, Medal, UserPlus, X, Play } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, Trophy, Clock, Users, Share2, Medal, UserPlus, X, Play, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -13,6 +14,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +42,7 @@ interface ScheduleViewProps {
     courts: number;
     startTime: string;
     teammatePairs?: { player1: string; player2: string }[];
+    courtConfigs?: CourtConfig[];
   };
   allPlayers: string[];
   onScheduleUpdate: (newMatches: Match[], newPlayers: string[]) => void;
@@ -49,6 +58,11 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
   const [playerToDelete, setPlayerToDelete] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [pendingScores, setPendingScores] = useState<Map<string, { team1: number; team2: number }>>(new Map());
+  const [editingMatch, setEditingMatch] = useState<string | null>(null);
+  const [editPlayers, setEditPlayers] = useState<{ team1: string[]; team2: string[] }>({ team1: [], team2: [] });
+  const [courtConfigs, setCourtConfigs] = useState<CourtConfig[]>(
+    gameConfig.courtConfigs || Array.from({ length: gameConfig.courts }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }))
+  );
 
   // Update current time every minute
   useEffect(() => {
@@ -151,7 +165,8 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
           gameConfig.totalTime,
           gameConfig.courts,
           gameConfig.startTime,
-          gameConfig.teammatePairs
+          gameConfig.teammatePairs,
+          courtConfigs
         );
 
         onScheduleUpdate(newMatches, allPlayers);
@@ -277,7 +292,8 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
       gameConfig.totalTime,
       gameConfig.courts,
       gameConfig.startTime,
-      gameConfig.teammatePairs
+      gameConfig.teammatePairs,
+      courtConfigs
     );
 
     onScheduleUpdate(newMatches, updatedPlayers);
@@ -322,12 +338,119 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
       gameConfig.totalTime,
       gameConfig.courts,
       gameConfig.startTime,
-      updatedPairs
+      updatedPairs,
+      courtConfigs
     );
 
     onScheduleUpdate(newMatches, updatedPlayers);
     setPlayerToDelete(null);
     toast({ title: "Player removed", description: "Schedule updated from next slot onwards" });
+  };
+
+  const startEditMatch = (match: Match) => {
+    setEditingMatch(match.id);
+    setEditPlayers({
+      team1: [...match.team1],
+      team2: [...match.team2]
+    });
+  };
+
+  const handlePlayerChange = (team: 'team1' | 'team2', index: number, newPlayer: string) => {
+    setEditPlayers(prev => ({
+      ...prev,
+      [team]: prev[team].map((p, i) => i === index ? newPlayer : p)
+    }));
+  };
+
+  const confirmEditMatch = (matchId: string) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+
+    // Validate all players are selected and unique
+    const allSelectedPlayers = [...editPlayers.team1, ...editPlayers.team2];
+    const uniquePlayers = new Set(allSelectedPlayers);
+    
+    if (uniquePlayers.size !== allSelectedPlayers.length) {
+      toast({ title: "Error", description: "Each player can only be selected once", variant: "destructive" });
+      return;
+    }
+
+    if (allSelectedPlayers.some(p => !p)) {
+      toast({ title: "Error", description: "Please select all players", variant: "destructive" });
+      return;
+    }
+
+    // Update the match
+    const updatedMatches = matches.map(m => 
+      m.id === matchId 
+        ? { ...m, team1: editPlayers.team1 as any, team2: editPlayers.team2 as any }
+        : m
+    );
+
+    // Find next unplayed match to regenerate from
+    const matchIndex = matches.findIndex(m => m.id === matchId);
+    const nextMatchIndex = matchIndex + 1;
+    
+    if (nextMatchIndex < matches.length) {
+      const nextMatch = matches[nextMatchIndex];
+      const playedMatches = updatedMatches.slice(0, nextMatchIndex).map(m => ({
+        ...m,
+        score: matchScores.get(m.id)
+      }));
+
+      const newMatches = regenerateScheduleFromSlot(
+        allPlayers,
+        playedMatches,
+        nextMatch.startTime,
+        gameConfig.gameDuration,
+        gameConfig.totalTime,
+        gameConfig.courts,
+        gameConfig.startTime,
+        gameConfig.teammatePairs,
+        courtConfigs
+      );
+
+      onScheduleUpdate(newMatches, allPlayers);
+    } else {
+      onScheduleUpdate(updatedMatches, allPlayers);
+    }
+
+    setEditingMatch(null);
+    toast({ title: "Match updated", description: "Schedule adjusted to minimize changes" });
+  };
+
+  const toggleCourtType = (courtNumber: number) => {
+    const updatedConfigs = courtConfigs.map(config => 
+      config.courtNumber === courtNumber 
+        ? { ...config, type: config.type === 'singles' ? 'doubles' as const : 'singles' as const }
+        : config
+    );
+    setCourtConfigs(updatedConfigs);
+
+    // Regenerate schedule from next unplayed match
+    const firstUnplayedMatchIndex = matches.findIndex(m => !matchScores.has(m.id));
+    if (firstUnplayedMatchIndex === -1) return;
+
+    const firstUnplayedMatch = matches[firstUnplayedMatchIndex];
+    const playedMatches = matches.slice(0, firstUnplayedMatchIndex).map(m => ({
+      ...m,
+      score: matchScores.get(m.id)
+    }));
+
+    const newMatches = regenerateScheduleFromSlot(
+      allPlayers,
+      playedMatches,
+      firstUnplayedMatch.startTime,
+      gameConfig.gameDuration,
+      gameConfig.totalTime,
+      gameConfig.courts,
+      gameConfig.startTime,
+      gameConfig.teammatePairs,
+      updatedConfigs
+    );
+
+    onScheduleUpdate(newMatches, allPlayers);
+    toast({ title: "Court type updated", description: "Schedule regenerated" });
   };
 
   return (
@@ -399,6 +522,36 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
             </Badge>
           ))}
         </div>
+      </Card>
+
+      {/* Court Configuration */}
+      <Card className="p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-3">Court Configuration</h3>
+        <div className="flex flex-wrap gap-3">
+          {courtConfigs.map((config) => (
+            <div key={config.courtNumber} className="flex items-center gap-2 p-2 rounded-lg border bg-card">
+              <span className="text-sm font-medium">Court {config.courtNumber}:</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs ${config.type === 'singles' ? 'text-muted-foreground' : 'text-foreground font-medium'}`}>
+                  Doubles
+                </span>
+                <Switch
+                  checked={config.type === 'singles'}
+                  onCheckedChange={() => toggleCourtType(config.courtNumber)}
+                  disabled={matchScores.size > 0}
+                />
+                <span className={`text-xs ${config.type === 'singles' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  Singles
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        {matchScores.size > 0 && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Court configuration can only be changed before any matches are scored
+          </p>
+        )}
       </Card>
 
       <AlertDialog open={!!playerToDelete} onOpenChange={(open) => !open && setPlayerToDelete(null)}>
@@ -475,51 +628,173 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                         </div>
 
                         <div className="space-y-3">
-                          {/* Team 1 */}
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                            <div className="flex items-center gap-2 flex-1">
-                              <Users className="w-4 h-4 text-primary" />
-                              <div className="font-medium text-sm">
-                                <div>{match.team1[0]}</div>
-                                <div className="text-muted-foreground">{match.team1[1]}</div>
+                          {editingMatch === match.id ? (
+                            /* Edit Mode */
+                            <>
+                              {/* Team 1 */}
+                              <div className="p-3 rounded-lg bg-secondary/50 space-y-2">
+                                <Label className="text-xs text-muted-foreground">Team 1</Label>
+                                {match.isSingles ? (
+                                  <Select value={editPlayers.team1[0]} onValueChange={(v) => handlePlayerChange('team1', 0, v)}>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {allPlayers.map(p => (
+                                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <>
+                                    <Select value={editPlayers.team1[0]} onValueChange={(v) => handlePlayerChange('team1', 0, v)}>
+                                      <SelectTrigger className="h-10">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {allPlayers.map(p => (
+                                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Select value={editPlayers.team1[1]} onValueChange={(v) => handlePlayerChange('team1', 1, v)}>
+                                      <SelectTrigger className="h-10">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {allPlayers.map(p => (
+                                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </>
+                                )}
                               </div>
-                            </div>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={scores.team1}
-                              onChange={(e) => updatePendingScore(match.id, "team1", Number(e.target.value))}
-                              className="w-16 h-12 text-center text-xl font-bold"
-                              disabled={isCompleted && !hasPending}
-                            />
-                          </div>
 
-                          <div className="text-center text-sm font-semibold text-muted-foreground">
-                            VS
-                          </div>
+                              <div className="text-center text-sm font-semibold text-muted-foreground">VS</div>
 
-                          {/* Team 2 */}
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                            <div className="flex items-center gap-2 flex-1">
-                              <Users className="w-4 h-4 text-accent" />
-                              <div className="font-medium text-sm">
-                                <div>{match.team2[0]}</div>
-                                <div className="text-muted-foreground">{match.team2[1]}</div>
+                              {/* Team 2 */}
+                              <div className="p-3 rounded-lg bg-secondary/50 space-y-2">
+                                <Label className="text-xs text-muted-foreground">Team 2</Label>
+                                {match.isSingles ? (
+                                  <Select value={editPlayers.team2[0]} onValueChange={(v) => handlePlayerChange('team2', 0, v)}>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {allPlayers.map(p => (
+                                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <>
+                                    <Select value={editPlayers.team2[0]} onValueChange={(v) => handlePlayerChange('team2', 0, v)}>
+                                      <SelectTrigger className="h-10">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {allPlayers.map(p => (
+                                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Select value={editPlayers.team2[1]} onValueChange={(v) => handlePlayerChange('team2', 1, v)}>
+                                      <SelectTrigger className="h-10">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {allPlayers.map(p => (
+                                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </>
+                                )}
                               </div>
-                            </div>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={scores.team2}
-                              onChange={(e) => updatePendingScore(match.id, "team2", Number(e.target.value))}
-                              className="w-16 h-12 text-center text-xl font-bold"
-                              disabled={isCompleted && !hasPending}
-                            />
-                          </div>
+
+                              <div className="flex gap-2">
+                                <Button 
+                                  onClick={() => confirmEditMatch(match.id)}
+                                  className="flex-1"
+                                >
+                                  Confirm Changes
+                                </Button>
+                                <Button 
+                                  onClick={() => setEditingMatch(null)}
+                                  variant="outline"
+                                  className="flex-1"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            /* View Mode */
+                            <>
+                              {/* Team 1 */}
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <Users className="w-4 h-4 text-primary" />
+                                  <div className="font-medium text-sm">
+                                    <div>{match.team1[0]}</div>
+                                    {!match.isSingles && match.team1[1] && (
+                                      <div className="text-muted-foreground">{match.team1[1]}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={scores.team1}
+                                  onChange={(e) => updatePendingScore(match.id, "team1", Number(e.target.value))}
+                                  className="w-16 h-12 text-center text-xl font-bold"
+                                  disabled={isCompleted && !hasPending}
+                                />
+                              </div>
+
+                              <div className="text-center text-sm font-semibold text-muted-foreground">
+                                VS
+                              </div>
+
+                              {/* Team 2 */}
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <Users className="w-4 h-4 text-accent" />
+                                  <div className="font-medium text-sm">
+                                    <div>{match.team2[0]}</div>
+                                    {!match.isSingles && match.team2[1] && (
+                                      <div className="text-muted-foreground">{match.team2[1]}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={scores.team2}
+                                  onChange={(e) => updatePendingScore(match.id, "team2", Number(e.target.value))}
+                                  className="w-16 h-12 text-center text-xl font-bold"
+                                  disabled={isCompleted && !hasPending}
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
 
+                        {/* Edit Players Button for Current Match */}
+                        {isCurrentMatch && !isCompleted && editingMatch !== match.id && (
+                          <Button 
+                            onClick={() => startEditMatch(match)}
+                            variant="outline"
+                            className="w-full gap-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Override Players
+                          </Button>
+                        )}
+
                         {/* Confirm/Edit Score Buttons */}
-                        {!isCompleted && (
+                        {!isCompleted && editingMatch !== match.id && (
                           <Button 
                             onClick={() => confirmScore(match.id)}
                             className="w-full mt-2"
@@ -529,7 +804,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                           </Button>
                         )}
                         
-                        {isCompleted && !hasPending && (
+                        {isCompleted && !hasPending && editingMatch !== match.id && (
                           <Button 
                             onClick={() => editScore(match.id)}
                             variant="outline"

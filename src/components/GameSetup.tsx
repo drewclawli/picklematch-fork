@@ -4,7 +4,9 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Clock, Trophy } from "lucide-react";
+import { CourtConfig } from "@/lib/scheduler";
 
 interface GameSetupProps {
   playerCount: number;
@@ -18,6 +20,7 @@ export interface GameConfig {
   courts: number;
   startTime: string;
   teammatePairs?: { player1: string; player2: string }[];
+  courtConfigs?: CourtConfig[];
 }
 
 export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) => {
@@ -25,12 +28,30 @@ export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) =
   const [totalTime, setTotalTime] = useState<number>(60);
   const [courts, setCourts] = useState<number>(2);
   const [startTime, setStartTime] = useState<string>("09:00");
+  const [courtConfigs, setCourtConfigs] = useState<CourtConfig[]>(
+    Array.from({ length: 2 }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }))
+  );
 
   const maxCourts = Math.floor(playerCount / 2);
   const totalTimeOptions = Array.from({ length: 12 }, (_, i) => (i + 1) * 15);
 
+  const handleCourtsChange = (newCourts: number) => {
+    setCourts(newCourts);
+    setCourtConfigs(Array.from({ length: newCourts }, (_, i) => 
+      courtConfigs[i] || { courtNumber: i + 1, type: 'doubles' as const }
+    ));
+  };
+
+  const toggleCourtType = (courtNumber: number) => {
+    setCourtConfigs(prev => prev.map(config => 
+      config.courtNumber === courtNumber 
+        ? { ...config, type: config.type === 'singles' ? 'doubles' : 'singles' }
+        : config
+    ));
+  };
+
   const handleSubmit = () => {
-    onComplete({ gameDuration, totalTime, courts, startTime });
+    onComplete({ gameDuration, totalTime, courts, startTime, courtConfigs });
   };
 
   return (
@@ -105,7 +126,7 @@ export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) =
           <Label htmlFor="courts" className="text-base font-semibold">
             Number of Courts
           </Label>
-          <Select value={courts.toString()} onValueChange={(v) => setCourts(Number(v))}>
+          <Select value={courts.toString()} onValueChange={(v) => handleCourtsChange(Number(v))}>
             <SelectTrigger id="courts" className="h-12 text-lg">
               <SelectValue />
             </SelectTrigger>
@@ -120,6 +141,34 @@ export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) =
           <p className="text-sm text-muted-foreground">
             Maximum {maxCourts} courts for {playerCount} players
           </p>
+        </div>
+
+        <div className="space-y-4">
+          <Label className="text-base font-semibold">
+            Court Configuration
+          </Label>
+          <div className="space-y-3">
+            {courtConfigs.map((config) => (
+              <div key={config.courtNumber} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                <Label htmlFor={`court-${config.courtNumber}`} className="text-sm font-medium">
+                  Court {config.courtNumber}
+                </Label>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm ${config.type === 'singles' ? 'text-muted-foreground' : 'text-foreground font-medium'}`}>
+                    Doubles
+                  </span>
+                  <Switch
+                    id={`court-${config.courtNumber}`}
+                    checked={config.type === 'singles'}
+                    onCheckedChange={() => toggleCourtType(config.courtNumber)}
+                  />
+                  <span className={`text-sm ${config.type === 'singles' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                    Singles
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
