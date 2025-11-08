@@ -276,19 +276,67 @@ const Index = () => {
       teammatePairs
     };
     setGameConfig(updatedConfig);
-    const schedule = generateSchedule(playerList, gameConfig.gameDuration, gameConfig.totalTime, gameConfig.courts, undefined, teammatePairs, gameConfig.courtConfigs);
-    setMatches(schedule);
+    
+    // Identify matches to preserve: completed (with scores) + current matches (first without score on each court)
+    const preservedMatches: Match[] = [];
+    const courts = Array.from(new Set(matches.map(m => m.court)));
+    
+    for (const court of courts) {
+      const courtMatches = matches.filter(m => m.court === court);
+      
+      // Add all completed matches (with scores)
+      const completedMatches = courtMatches.filter(m => matchScores.has(m.id));
+      preservedMatches.push(...completedMatches);
+      
+      // Add current match (first without score)
+      const currentMatchIndex = courtMatches.findIndex(m => !matchScores.has(m.id));
+      if (currentMatchIndex >= 0) {
+        preservedMatches.push(courtMatches[currentMatchIndex]);
+      }
+    }
+    
+    // Find the earliest time slot to start regeneration from
+    let regenerateFromTime = 0;
+    if (preservedMatches.length > 0) {
+      const maxPreservedEndTime = Math.max(...preservedMatches.map(m => m.endTime));
+      regenerateFromTime = maxPreservedEndTime;
+    }
+    
+    // Generate new schedule
+    const newSchedule = generateSchedule(
+      playerList, 
+      gameConfig.gameDuration, 
+      gameConfig.totalTime, 
+      gameConfig.courts, 
+      undefined, 
+      teammatePairs, 
+      gameConfig.courtConfigs
+    );
+    
+    // Filter new schedule to only include matches after regeneration point
+    const futureMatches = newSchedule.filter(m => m.startTime >= regenerateFromTime);
+    
+    // Combine preserved matches with future matches
+    const finalSchedule = [...preservedMatches, ...futureMatches];
+    
+    setMatches(finalSchedule);
+    
     try {
       if (gameId) {
         const {
           error
         } = await supabase.from('games').update({
           players: playerList,
-          matches: schedule as any,
+          matches: finalSchedule as any,
           game_config: updatedConfig as any
         }).eq('id', gameId);
         if (error) throw error;
-        toast.success("Schedule generated!");
+        
+        const preservedCount = preservedMatches.length;
+        const message = preservedCount > 0 
+          ? `Players updated! ${preservedCount} match(es) preserved, future matches regenerated.`
+          : "Schedule generated!";
+        toast.success(message);
       }
     } catch (error) {
       toast.error("Failed to update players");
