@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { GameSetup, GameConfig } from "@/components/GameSetup";
 import { GameCodeDialog } from "@/components/GameCodeDialog";
 import { ScheduleView } from "@/components/ScheduleView";
@@ -25,6 +26,65 @@ const Index = () => {
     team2: number;
   }>>(new Map());
   const [userId, setUserId] = useState<string | null>(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
+
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    const restoreSession = async () => {
+      const savedGameId = localStorage.getItem('teamup_game_id');
+      const savedGameCode = localStorage.getItem('teamup_game_code');
+      
+      if (savedGameId && savedGameCode && userId) {
+        try {
+          const { data, error } = await supabase
+            .from('games')
+            .select('*')
+            .eq('id', savedGameId)
+            .single();
+          
+          if (!error && data) {
+            const loadedMatches = data.matches as unknown as Match[] || [];
+            
+            setGameId(data.id);
+            setGameCode(data.game_code);
+            setPlayers(data.players || []);
+            setGameConfig(data.game_config as unknown as GameConfig);
+            setMatches(loadedMatches);
+            syncMatchScoresFromMatches(loadedMatches);
+            setShowGameCodeDialog(false);
+            
+            if (data.game_config) {
+              setSetupComplete(true);
+            }
+            
+            if (loadedMatches.length > 0) {
+              setActiveSection("scheduler");
+            } else if (data.players && data.players.length > 0) {
+              setActiveSection("checkin");
+            } else {
+              setActiveSection("setup");
+            }
+            
+            toast.success(`Session restored: ${data.game_code}`);
+          } else {
+            // Session not found in DB, clear localStorage
+            localStorage.removeItem('teamup_game_id');
+            localStorage.removeItem('teamup_game_code');
+          }
+        } catch (error) {
+          console.error('Failed to restore session:', error);
+          localStorage.removeItem('teamup_game_id');
+          localStorage.removeItem('teamup_game_code');
+        }
+      }
+      
+      setIsRestoringSession(false);
+    };
+    
+    if (userId) {
+      restoreSession();
+    }
+  }, [userId]);
 
   // Initialize anonymous authentication
   useEffect(() => {
@@ -95,6 +155,9 @@ const Index = () => {
     };
   }, [gameId]);
   const createNewGame = async () => {
+    // Clear any existing session
+    localStorage.removeItem('teamup_game_id');
+    localStorage.removeItem('teamup_game_code');
     setShowGameCodeDialog(false);
     setActiveSection("setup");
   };
@@ -121,6 +184,10 @@ const Index = () => {
       setMatches(loadedMatches);
       syncMatchScoresFromMatches(loadedMatches);
       setShowGameCodeDialog(false);
+      
+      // Save session to localStorage
+      localStorage.setItem('teamup_game_id', data.id);
+      localStorage.setItem('teamup_game_code', data.game_code);
       if (data.game_config) {
         setSetupComplete(true);
       }
@@ -168,6 +235,11 @@ const Index = () => {
         if (error) throw error;
         setGameId(data.id);
         setGameCode(newGameCode);
+        
+        // Save session to localStorage
+        localStorage.setItem('teamup_game_id', data.id);
+        localStorage.setItem('teamup_game_code', newGameCode);
+        
         toast.success(`Game created! Code: ${newGameCode}`);
       }
       setActiveSection("checkin");
@@ -235,6 +307,37 @@ const Index = () => {
     setSetupComplete(false);
     setShowGameCodeDialog(true);
   };
+
+  const startNewSession = () => {
+    // Clear localStorage
+    localStorage.removeItem('teamup_game_id');
+    localStorage.removeItem('teamup_game_code');
+    
+    // Reset all state
+    setActiveSection("setup");
+    setPlayers([]);
+    setMatches([]);
+    setGameConfig(null);
+    setGameId(null);
+    setGameCode("");
+    setSetupComplete(false);
+    setMatchScores(new Map());
+    setShowGameCodeDialog(false);
+    
+    toast.success("New session started");
+  };
+  // Show loading state while restoring session
+  if (isRestoringSession) {
+    return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <Trophy className="w-8 h-8 text-white" />
+        </div>
+        <p className="text-muted-foreground">Loading session...</p>
+      </div>
+    </div>;
+  }
+
   return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 pb-24">
       <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8">
         <header className="text-center mb-8 sm:mb-12">
@@ -256,6 +359,17 @@ const Index = () => {
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-foreground mb-2">Game Setup</h2>
                 <p className="text-muted-foreground">Configure your game settings</p>
+                {gameId && (
+                  <div className="mt-4">
+                    <Button 
+                      onClick={startNewSession} 
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      Start New Session
+                    </Button>
+                  </div>
+                )}
               </div>
               <GameSetup onComplete={handleGameConfigComplete} />
             </div>}
