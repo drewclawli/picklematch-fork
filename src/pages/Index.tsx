@@ -1,25 +1,26 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { CombinedSetup } from "@/components/CombinedSetup";
+import { GameSetup, GameConfig } from "@/components/GameSetup";
 import { GameCodeDialog } from "@/components/GameCodeDialog";
 import { ScheduleView } from "@/components/ScheduleView";
-import { generateSchedule, Match, CourtConfig } from "@/lib/scheduler";
+import { CheckInOut } from "@/components/CheckInOut";
+import { BottomNav } from "@/components/BottomNav";
+import { generateSchedule, Match } from "@/lib/scheduler";
 import { Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { GameConfig } from "@/components/GameSetup";
-import { QRCodeSVG } from "qrcode.react";
 
-type Step = "start" | "setup" | "schedule";
+type Section = "setup" | "scheduler" | "checkin";
 
 const Index = () => {
-  const [step, setStep] = useState<Step>("start");
+  const [activeSection, setActiveSection] = useState<Section>("setup");
   const [players, setPlayers] = useState<string[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
   const [gameId, setGameId] = useState<string | null>(null);
   const [gameCode, setGameCode] = useState<string>("");
   const [showGameCodeDialog, setShowGameCodeDialog] = useState(true);
+  const [setupComplete, setSetupComplete] = useState(false);
 
   useEffect(() => {
     if (!gameId) return;
@@ -52,7 +53,7 @@ const Index = () => {
 
   const createNewGame = async () => {
     setShowGameCodeDialog(false);
-    setStep("setup");
+    setActiveSection("setup");
   };
 
   const joinExistingGame = async (code: string) => {
@@ -75,10 +76,14 @@ const Index = () => {
       setMatches((data.matches as unknown as Match[]) || []);
       setShowGameCodeDialog(false);
       
+      if (data.game_config) {
+        setSetupComplete(true);
+      }
+      
       if (data.matches && Array.isArray(data.matches) && data.matches.length > 0) {
-        setStep("schedule");
+        setActiveSection("scheduler");
       } else {
-        setStep("setup");
+        setActiveSection("setup");
       }
       
       toast.success(`Joined game: ${code}`);
@@ -88,28 +93,16 @@ const Index = () => {
     }
   };
 
-  const handleSetupComplete = async (playerList: string[], config: GameConfig) => {
+  const handleGameConfigComplete = async (config: GameConfig) => {
     setGameConfig(config);
-    const schedule = generateSchedule(
-      playerList,
-      config.gameDuration,
-      config.totalTime,
-      config.courts,
-      undefined,
-      config.teammatePairs,
-      config.courtConfigs
-    );
-    setMatches(schedule);
-    setPlayers(playerList);
+    setSetupComplete(true);
 
     try {
       if (gameId) {
         const { error } = await supabase
           .from('games')
           .update({
-            players: playerList,
             game_config: config as any,
-            matches: schedule as any,
           })
           .eq('id', gameId);
 
@@ -120,12 +113,12 @@ const Index = () => {
 
         const { data, error } = await supabase
           .from('games')
-          .insert({
+          .insert([{
             game_code: newGameCode,
-            players: playerList,
             game_config: config as any,
-            matches: schedule as any,
-          })
+            players: [],
+            matches: [],
+          }])
           .select()
           .single();
 
@@ -136,9 +129,44 @@ const Index = () => {
         toast.success(`Game created! Code: ${newGameCode}`);
       }
       
-      setStep("schedule");
+      setActiveSection("checkin");
     } catch (error) {
       toast.error("Failed to save game");
+      console.error(error);
+    }
+  };
+
+  const handlePlayersUpdate = async (playerList: string[]) => {
+    setPlayers(playerList);
+
+    if (!gameConfig) return;
+
+    const schedule = generateSchedule(
+      playerList,
+      gameConfig.gameDuration,
+      gameConfig.totalTime,
+      gameConfig.courts,
+      undefined,
+      gameConfig.teammatePairs,
+      gameConfig.courtConfigs
+    );
+    setMatches(schedule);
+
+    try {
+      if (gameId) {
+        const { error } = await supabase
+          .from('games')
+          .update({
+            players: playerList,
+            matches: schedule as any,
+          })
+          .eq('id', gameId);
+
+        if (error) throw error;
+        toast.success("Schedule generated!");
+      }
+    } catch (error) {
+      toast.error("Failed to update players");
       console.error(error);
     }
   };
@@ -166,18 +194,19 @@ const Index = () => {
   };
 
   const resetApp = () => {
-    setStep("start");
+    setActiveSection("setup");
     setPlayers([]);
     setMatches([]);
     setGameConfig(null);
     setGameId(null);
     setGameCode("");
+    setSetupComplete(false);
     setShowGameCodeDialog(true);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 p-4 sm:p-6 md:p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 pb-24">
+      <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8">
         <header className="text-center mb-8 sm:mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-lg">
@@ -199,32 +228,18 @@ const Index = () => {
           onCreateGame={createNewGame}
         />
 
-        <Card className="p-6 sm:p-8 md:p-10 shadow-xl">
-          {step === "setup" && (
+        <Card className="p-6 sm:p-8 md:p-10 shadow-xl min-h-[60vh]">
+          {activeSection === "setup" && (
             <div className="space-y-6">
-              <CombinedSetup onComplete={handleSetupComplete} />
-              {gameCode && (
-                <div className="flex flex-col items-center gap-4 p-6 bg-primary/10 rounded-lg border border-primary/20">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Game Code</p>
-                    <p className="text-3xl font-bold font-mono tracking-wider text-primary">{gameCode}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Share this code with other players</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-lg">
-                    <QRCodeSVG 
-                      value={`${window.location.origin}?join=${gameCode}`}
-                      size={180}
-                      level="H"
-                      includeMargin={true}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Scan to join this game</p>
-                </div>
-              )}
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Game Setup</h2>
+                <p className="text-muted-foreground">Configure your game settings</p>
+              </div>
+              <GameSetup onComplete={handleGameConfigComplete} />
             </div>
           )}
           
-          {step === "schedule" && gameConfig && (
+          {activeSection === "scheduler" && gameConfig && matches.length > 0 && (
             <ScheduleView
               matches={matches}
               onBack={resetApp}
@@ -233,12 +248,34 @@ const Index = () => {
               onScheduleUpdate={handleScheduleUpdate}
             />
           )}
-        </Card>
 
-        <footer className="mt-8 text-center text-sm text-muted-foreground">
-          <p>Perfect for tennis, pickleball, badminton, and more!</p>
-        </footer>
+          {activeSection === "scheduler" && (!gameConfig || matches.length === 0) && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Please complete game setup and add players first</p>
+            </div>
+          )}
+
+          {activeSection === "checkin" && gameCode && (
+            <CheckInOut
+              gameCode={gameCode}
+              players={players}
+              onPlayersUpdate={handlePlayersUpdate}
+            />
+          )}
+
+          {activeSection === "checkin" && !gameCode && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Please complete game setup first</p>
+            </div>
+          )}
+        </Card>
       </div>
+
+      <BottomNav
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        disabled={showGameCodeDialog}
+      />
     </div>
   );
 };

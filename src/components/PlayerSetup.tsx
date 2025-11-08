@@ -7,10 +7,11 @@ import { X, Plus, Users } from "lucide-react";
 
 interface PlayerSetupProps {
   onComplete: (players: string[]) => void;
+  initialPlayers?: string[];
 }
 
-export const PlayerSetup = ({ onComplete }: PlayerSetupProps) => {
-  const [players, setPlayers] = useState<string[]>([]);
+export const PlayerSetup = ({ onComplete, initialPlayers = [] }: PlayerSetupProps) => {
+  const [players, setPlayers] = useState<string[]>(initialPlayers);
   const [currentName, setCurrentName] = useState("");
 
   const addPlayer = () => {

@@ -9,9 +9,9 @@ import { Clock, Trophy } from "lucide-react";
 import { CourtConfig } from "@/lib/scheduler";
 
 interface GameSetupProps {
-  playerCount: number;
+  playerCount?: number;
   onComplete: (config: GameConfig) => void;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export interface GameConfig {
@@ -22,7 +22,7 @@ export interface GameConfig {
   courtConfigs?: CourtConfig[];
 }
 
-export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) => {
+export const GameSetup = ({ playerCount = 4, onComplete, onBack }: GameSetupProps) => {
   const [gameDuration, setGameDuration] = useState<number>(10);
   const [totalTime, setTotalTime] = useState<number>(60);
   const [courts, setCourts] = useState<number>(2);
@@ -158,11 +158,13 @@ export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) =
       </div>
 
       <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack} size="lg" className="flex-1 h-14 text-base">
-          Back
-        </Button>
-        <Button onClick={handleSubmit} size="lg" className="flex-1 h-14 text-base bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70">
-          Generate Schedule
+        {onBack && (
+          <Button variant="outline" onClick={onBack} size="lg" className="flex-1 h-14 text-base">
+            Back
+          </Button>
+        )}
+        <Button onClick={handleSubmit} size="lg" className={`h-14 text-base bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 ${onBack ? 'flex-1' : 'w-full'}`}>
+          Continue
         </Button>
       </div>
     </div>
