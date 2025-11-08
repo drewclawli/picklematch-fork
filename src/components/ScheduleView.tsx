@@ -3,6 +3,7 @@ import { Match, regenerateScheduleFromSlot, CourtConfig } from "@/lib/scheduler"
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target } from "lucide-react";
@@ -89,6 +90,18 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
     const match = matches.find(m => m.id === editingMatch);
     if (!match) return;
+
+    // Validate no duplicate players within the same team
+    if (!match.isSingles) {
+      if (editedTeams.team1[0] && editedTeams.team1[1] && editedTeams.team1[0] === editedTeams.team1[1]) {
+        toast({ title: "Invalid team 1", description: "Team members must be different", variant: "destructive" });
+        return;
+      }
+      if (editedTeams.team2[0] && editedTeams.team2[1] && editedTeams.team2[0] === editedTeams.team2[1]) {
+        toast({ title: "Invalid team 2", description: "Team members must be different", variant: "destructive" });
+        return;
+      }
+    }
 
     const allEditedPlayers = [...editedTeams.team1, ...editedTeams.team2].filter(p => p.trim());
     const updatedPlayers = [...new Set([...allEditedPlayers, ...allPlayers])];
@@ -184,55 +197,97 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
   const checkPlayerConflicts = (scores: Map<string, { team1: number; team2: number }>) => {
     const currentMatches = matches.filter(m => !scores.has(m.id));
     const currentMatchesByCourt = new Map<number, Match>();
-    
+
     currentMatches.forEach(match => {
       if (!currentMatchesByCourt.has(match.court)) {
         currentMatchesByCourt.set(match.court, match);
       }
     });
 
-    if (currentMatchesByCourt.size <= 1) return;
+    const list = Array.from(currentMatchesByCourt.values());
+    if (list.length <= 1) return;
 
-    const allCurrentPlayers = new Map<string, number[]>();
-    
-    currentMatchesByCourt.forEach((match, court) => {
-      [...match.team1, ...match.team2].forEach(player => {
-        if (!allCurrentPlayers.has(player)) {
-          allCurrentPlayers.set(player, []);
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const m1 = list[i];
+        const m2 = list[j];
+        const set1 = new Set<string>([...m1.team1, ...m1.team2]);
+        const set2 = new Set<string>([...m2.team1, ...m2.team2]);
+        const conflicts = Array.from(set1).filter(p => set2.has(p));
+
+        if (conflicts.length > 0) {
+          // Decide which match is 'latter' based on startTime, fallback to order in matches array
+          const [earlier, later] = m1.startTime <= m2.startTime ? [m1, m2] : [m2, m1];
+          const playersInUse = new Set<string>([...earlier.team1, ...earlier.team2]);
+
+          // Build updated teams for the later match avoiding playersInUse
+          const usedInLater = new Set<string>();
+
+          const t1 = (later.team1 as string[]).map(p => {
+            if (playersInUse.has(p)) return "";
+            usedInLater.add(p);
+            return p;
+          });
+          const t2 = (later.team2 as string[]).map(p => {
+            if (playersInUse.has(p)) return "";
+            usedInLater.add(p);
+            return p;
+          });
+
+          const candidates = allPlayers.filter(p => !playersInUse.has(p) && !usedInLater.has(p));
+          const pickNext = (exclude: string[]) => {
+            const pick = candidates.find(c => !exclude.includes(c));
+            if (!pick) return null;
+            usedInLater.add(pick);
+            const idx = candidates.indexOf(pick);
+            if (idx >= 0) candidates.splice(idx, 1);
+            return pick;
+          };
+
+          if (later.isSingles) {
+            if (!t1[0]) t1[0] = pickNext([]) || "";
+            if (!t2[0]) t2[0] = pickNext([]) || "";
+          } else {
+            if (!t1[0]) t1[0] = pickNext([t1[1]].filter(Boolean) as string[]) || "";
+            if (!t1[1]) t1[1] = pickNext([t1[0]].filter(Boolean) as string[]) || "";
+            if (!t2[0]) t2[0] = pickNext([t2[1]].filter(Boolean) as string[]) || "";
+            if (!t2[1]) t2[1] = pickNext([t2[0]].filter(Boolean) as string[]) || "";
+          }
+
+          if (t1.some(x => !x) || t2.some(x => !x)) {
+            toast({ title: "Conflict detected", description: "Not enough available players to adjust.", variant: "destructive" });
+            return;
+          }
+
+          const updatedMatch: Match = {
+            ...later,
+            team1: later.isSingles ? [t1[0]] as [string] : [t1[0], t1[1]] as [string, string],
+            team2: later.isSingles ? [t2[0]] as [string] : [t2[0], t2[1]] as [string, string],
+          };
+
+          const laterIndex = matches.findIndex(m => m.id === later.id);
+          const playedMatches = matches.slice(0, laterIndex).map(m => ({
+            ...m,
+            score: normalizeScore(scores.get(m.id))
+          }));
+
+          const newMatches = regenerateScheduleFromSlot(
+            allPlayers,
+            [...playedMatches, updatedMatch],
+            later.endTime,
+            gameConfig.gameDuration,
+            gameConfig.totalTime,
+            gameConfig.courts,
+            undefined,
+            gameConfig.teammatePairs,
+            courtConfigs
+          );
+
+          onScheduleUpdate(newMatches, allPlayers);
+          toast({ title: "Schedule adjusted", description: `Resolved conflicts for: ${conflicts.join(', ')}` });
+          return;
         }
-        allCurrentPlayers.get(player)!.push(court);
-      });
-    });
-
-    const conflictingPlayers = Array.from(allCurrentPlayers.entries())
-      .filter(([_, courts]) => courts.length > 1)
-      .map(([player]) => player);
-
-    if (conflictingPlayers.length > 0) {
-      const firstConflictMatch = Array.from(currentMatchesByCourt.values())[0];
-      const matchIndex = matches.findIndex(m => m.id === firstConflictMatch.id);
-      const playedMatches = matches.slice(0, matchIndex).map(m => ({
-        ...m,
-        score: normalizeScore(scores.get(m.id))
-      }));
-
-      const newMatches = regenerateScheduleFromSlot(
-        allPlayers,
-        playedMatches,
-        firstConflictMatch.startTime,
-        gameConfig.gameDuration,
-        gameConfig.totalTime,
-        gameConfig.courts,
-        undefined,
-        gameConfig.teammatePairs,
-        courtConfigs
-      );
-
-      onScheduleUpdate(newMatches, allPlayers);
-      toast({ 
-        title: "Schedule adjusted", 
-        description: `Resolved conflicts for: ${conflictingPlayers.join(', ')}` 
-      });
+      }
     }
   };
 
@@ -337,6 +392,10 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
       }, 100);
     }
   }, [carouselApis.size]);
+
+  useEffect(() => {
+    checkPlayerConflicts(matchScores);
+  }, [matches, matchScores]);
 
   return (
     <div className="pb-20 max-h-[calc(100vh-5rem)] overflow-y-auto">
@@ -457,19 +516,37 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                 <Users className="w-4 h-4 text-primary flex-shrink-0" />
                                 {editingMatch === match.id ? (
                                   <div className="flex-1 min-w-0 space-y-1">
-                                    <Input
-                                      value={editedTeams.team1[0] || ''}
-                                      onChange={(e) => updateEditedPlayer('team1', 0, e.target.value)}
-                                      className="h-7 text-sm"
-                                      placeholder="Player 1"
-                                    />
+                                    <Select
+                                      value={editedTeams.team1[0] || ""}
+                                      onValueChange={(v) => updateEditedPlayer('team1', 0, v)}
+                                    >
+                                      <SelectTrigger className="h-7 text-sm">
+                                        <SelectValue placeholder="Player 1" />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-50">
+                                        {allPlayers
+                                          .filter((p) => p !== editedTeams.team1[1])
+                                          .map((p) => (
+                                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                    </Select>
                                     {!match.isSingles && (
-                                      <Input
-                                        value={editedTeams.team1[1] || ''}
-                                        onChange={(e) => updateEditedPlayer('team1', 1, e.target.value)}
-                                        className="h-7 text-sm"
-                                        placeholder="Player 2"
-                                      />
+                                      <Select
+                                        value={editedTeams.team1[1] || ""}
+                                        onValueChange={(v) => updateEditedPlayer('team1', 1, v)}
+                                      >
+                                        <SelectTrigger className="h-7 text-sm">
+                                          <SelectValue placeholder="Player 2" />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-50">
+                                          {allPlayers
+                                            .filter((p) => p !== editedTeams.team1[0])
+                                            .map((p) => (
+                                              <SelectItem key={p} value={p}>{p}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                      </Select>
                                     )}
                                   </div>
                                 ) : (
@@ -510,19 +587,37 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                 <Users className="w-4 h-4 text-accent flex-shrink-0" />
                                 {editingMatch === match.id ? (
                                   <div className="flex-1 min-w-0 space-y-1">
-                                    <Input
-                                      value={editedTeams.team2[0] || ''}
-                                      onChange={(e) => updateEditedPlayer('team2', 0, e.target.value)}
-                                      className="h-7 text-sm"
-                                      placeholder="Player 1"
-                                    />
+                                    <Select
+                                      value={editedTeams.team2[0] || ""}
+                                      onValueChange={(v) => updateEditedPlayer('team2', 0, v)}
+                                    >
+                                      <SelectTrigger className="h-7 text-sm">
+                                        <SelectValue placeholder="Player 1" />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-50">
+                                        {allPlayers
+                                          .filter((p) => p !== editedTeams.team2[1])
+                                          .map((p) => (
+                                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                    </Select>
                                     {!match.isSingles && (
-                                      <Input
-                                        value={editedTeams.team2[1] || ''}
-                                        onChange={(e) => updateEditedPlayer('team2', 1, e.target.value)}
-                                        className="h-7 text-sm"
-                                        placeholder="Player 2"
-                                      />
+                                      <Select
+                                        value={editedTeams.team2[1] || ""}
+                                        onValueChange={(v) => updateEditedPlayer('team2', 1, v)}
+                                      >
+                                        <SelectTrigger className="h-7 text-sm">
+                                          <SelectValue placeholder="Player 2" />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-50">
+                                          {allPlayers
+                                            .filter((p) => p !== editedTeams.team2[0])
+                                            .map((p) => (
+                                              <SelectItem key={p} value={p}>{p}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                      </Select>
                                     )}
                                   </div>
                                 ) : (
