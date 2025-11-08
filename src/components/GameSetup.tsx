@@ -18,7 +18,6 @@ export interface GameConfig {
   gameDuration: number;
   totalTime: number;
   courts: number;
-  startTime: string;
   teammatePairs?: { player1: string; player2: string }[];
   courtConfigs?: CourtConfig[];
 }
@@ -27,7 +26,6 @@ export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) =
   const [gameDuration, setGameDuration] = useState<number>(10);
   const [totalTime, setTotalTime] = useState<number>(60);
   const [courts, setCourts] = useState<number>(2);
-  const [startTime, setStartTime] = useState<string>("09:00");
   const [courtConfigs, setCourtConfigs] = useState<CourtConfig[]>(
     Array.from({ length: 2 }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }))
   );
@@ -51,7 +49,7 @@ export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) =
   };
 
   const handleSubmit = () => {
-    onComplete({ gameDuration, totalTime, courts, startTime, courtConfigs });
+    onComplete({ gameDuration, totalTime, courts, courtConfigs });
   };
 
   return (
@@ -89,19 +87,6 @@ export const GameSetup = ({ playerCount, onComplete, onBack }: GameSetupProps) =
               ))}
             </div>
           </RadioGroup>
-        </div>
-
-        <div className="space-y-4">
-          <Label htmlFor="start-time" className="text-base font-semibold">
-            Start Time
-          </Label>
-          <Input
-            id="start-time"
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="h-12 text-lg"
-          />
         </div>
 
         <div className="space-y-4">

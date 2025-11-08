@@ -20,7 +20,6 @@ export const CombinedSetup = ({ onComplete }: CombinedSetupProps) => {
   const [gameDuration, setGameDuration] = useState<5 | 10 | 15>(10);
   const [totalTime, setTotalTime] = useState<number>(60);
   const [courts, setCourts] = useState<number>(2);
-  const [startTime, setStartTime] = useState<string>("09:00");
   const [teammatePairs, setTeammatePairs] = useState<{ player1: string; player2: string }[]>([]);
   const [selectedForPairing, setSelectedForPairing] = useState<string | null>(null);
 
@@ -87,7 +86,6 @@ export const CombinedSetup = ({ onComplete }: CombinedSetupProps) => {
       gameDuration,
       totalTime,
       courts,
-      startTime,
       teammatePairs,
     };
     onComplete(players, config);
@@ -274,17 +272,6 @@ export const CombinedSetup = ({ onComplete }: CombinedSetupProps) => {
               {players.length < 4 && (
                 <p className="text-sm text-muted-foreground">Add at least 4 players to select courts</p>
               )}
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="start-time" className="text-base">Start Time</Label>
-              <Input
-                id="start-time"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="max-w-[200px]"
-              />
             </div>
           </div>
         </div>

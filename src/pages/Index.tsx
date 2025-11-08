@@ -95,7 +95,7 @@ const Index = () => {
       config.gameDuration,
       config.totalTime,
       config.courts,
-      config.startTime,
+      undefined,
       config.teammatePairs,
       config.courtConfigs
     );
@@ -201,11 +201,8 @@ const Index = () => {
 
         <Card className="p-6 sm:p-8 md:p-10 shadow-xl">
           {step === "setup" && (
-            <CombinedSetup onComplete={handleSetupComplete} />
-          )}
-          
-          {step === "schedule" && gameConfig && (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <CombinedSetup onComplete={handleSetupComplete} />
               {gameCode && (
                 <div className="flex flex-col items-center gap-4 p-6 bg-primary/10 rounded-lg border border-primary/20">
                   <div className="text-center">
@@ -224,14 +221,17 @@ const Index = () => {
                   <p className="text-xs text-muted-foreground">Scan to join this game</p>
                 </div>
               )}
-              <ScheduleView
-                matches={matches}
-                onBack={resetApp}
-                gameConfig={gameConfig}
-                allPlayers={players}
-                onScheduleUpdate={handleScheduleUpdate}
-              />
             </div>
+          )}
+          
+          {step === "schedule" && gameConfig && (
+            <ScheduleView
+              matches={matches}
+              onBack={resetApp}
+              gameConfig={gameConfig}
+              allPlayers={players}
+              onScheduleUpdate={handleScheduleUpdate}
+            />
           )}
         </Card>
 

@@ -40,7 +40,6 @@ interface ScheduleViewProps {
     gameDuration: number;
     totalTime: number;
     courts: number;
-    startTime: string;
     teammatePairs?: { player1: string; player2: string }[];
     courtConfigs?: CourtConfig[];
   };
@@ -64,22 +63,11 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     gameConfig.courtConfigs || Array.from({ length: gameConfig.courts }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }))
   );
 
-  // Update current time every minute
+  // Track elapsed time from when schedule was generated (using relative minutes)
   useEffect(() => {
-    const updateCurrentTime = () => {
-      const now = new Date();
-      const [startHours, startMinutes] = gameConfig.startTime.split(':').map(Number);
-      const startTimeInMinutes = startHours * 60 + startMinutes;
-      const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
-      const elapsed = currentTimeInMinutes - startTimeInMinutes;
-      setCurrentTime(Math.max(0, elapsed));
-    };
-
-    updateCurrentTime();
-    const interval = setInterval(updateCurrentTime, 60000); // Update every minute
-
-    return () => clearInterval(interval);
-  }, [gameConfig.startTime]);
+    // currentTime will be managed by match completion rather than real clock time
+    // This is now a relative time tracker
+  }, []);
 
   // Find current match based on time and scores
   const currentMatch = useMemo(() => {
@@ -100,7 +88,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
   const confirmScore = (matchId: string) => {
     const pending = pendingScores.get(matchId);
-    if (!pending || pending.team1 <= 0 || pending.team2 <= 0) {
+    if (!pending || pending.team1 === undefined || pending.team2 === undefined) {
       toast({ title: "Please enter both scores", variant: "destructive" });
       return;
     }
@@ -164,7 +152,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
           gameConfig.gameDuration,
           gameConfig.totalTime,
           gameConfig.courts,
-          gameConfig.startTime,
+          undefined,
           gameConfig.teammatePairs,
           courtConfigs
         );
@@ -289,11 +277,11 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
       matchesWithScores,
       firstUnplayedMatch.startTime,
       gameConfig.gameDuration,
-      gameConfig.totalTime,
-      gameConfig.courts,
-      gameConfig.startTime,
-      gameConfig.teammatePairs,
-      courtConfigs
+          gameConfig.totalTime,
+          gameConfig.courts,
+          undefined,
+          gameConfig.teammatePairs,
+          courtConfigs
     );
 
     onScheduleUpdate(newMatches, updatedPlayers);
@@ -335,11 +323,11 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
       matchesWithScores,
       firstUnplayedMatch.startTime,
       gameConfig.gameDuration,
-      gameConfig.totalTime,
-      gameConfig.courts,
-      gameConfig.startTime,
-      updatedPairs,
-      courtConfigs
+          gameConfig.totalTime,
+          gameConfig.courts,
+          undefined,
+          updatedPairs,
+          courtConfigs
     );
 
     onScheduleUpdate(newMatches, updatedPlayers);
@@ -403,11 +391,11 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
         playedMatches,
         nextMatch.startTime,
         gameConfig.gameDuration,
-        gameConfig.totalTime,
-        gameConfig.courts,
-        gameConfig.startTime,
-        gameConfig.teammatePairs,
-        courtConfigs
+          gameConfig.totalTime,
+          gameConfig.courts,
+          undefined,
+          gameConfig.teammatePairs,
+          courtConfigs
       );
 
       onScheduleUpdate(newMatches, allPlayers);
@@ -442,11 +430,11 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
       playedMatches,
       firstUnplayedMatch.startTime,
       gameConfig.gameDuration,
-      gameConfig.totalTime,
-      gameConfig.courts,
-      gameConfig.startTime,
-      gameConfig.teammatePairs,
-      updatedConfigs
+          gameConfig.totalTime,
+          gameConfig.courts,
+          undefined,
+          gameConfig.teammatePairs,
+          updatedConfigs
     );
 
     onScheduleUpdate(newMatches, allPlayers);
