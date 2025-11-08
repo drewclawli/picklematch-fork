@@ -264,7 +264,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
               {/* Carousel */}
               <Carousel
-                opts={{ align: "start", loop: false }}
+                opts={{ align: currentMatchIndex >= 0 ? "center" : "start", loop: false }}
                 className="w-full"
                 setApi={(api) => {
                   if (api) {
@@ -284,7 +284,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                     const hasPending = pendingScores.has(match.id);
 
                     return (
-                      <CarouselItem key={match.id} className="pl-2 basis-[85%] md:basis-[75%] lg:basis-[90%]">
+                      <CarouselItem key={match.id} className="pl-2 basis-[90%] sm:basis-[80%] lg:basis-1/3">
                         <Card className={`p-3 transition-all ${
                           isCurrentMatch 
                             ? 'border-2 border-primary bg-primary/5 shadow-lg' 
