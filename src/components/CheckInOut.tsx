@@ -11,12 +11,13 @@ import { Badge } from "@/components/ui/badge";
 interface CheckInOutProps {
   gameCode: string;
   players: string[];
-  onPlayersUpdate: (players: string[]) => void;
+  onPlayersUpdate: (players: string[], teammatePairs?: { player1: string; player2: string }[]) => void;
   matches?: Match[];
   matchScores?: Map<string, { team1: number; team2: number }>;
+  teammatePairs?: { player1: string; player2: string }[];
 }
 
-export const CheckInOut = ({ gameCode, players, onPlayersUpdate, matches = [], matchScores = new Map() }: CheckInOutProps) => {
+export const CheckInOut = ({ gameCode, players, onPlayersUpdate, matches = [], matchScores = new Map(), teammatePairs = [] }: CheckInOutProps) => {
   const [copied, setCopied] = useState(false);
   const gameUrl = `${window.location.origin}?join=${gameCode}`;
 
@@ -156,8 +157,9 @@ export const CheckInOut = ({ gameCode, players, onPlayersUpdate, matches = [], m
       </Card>
 
       <PlayerSetup
-        onComplete={(playerList) => onPlayersUpdate(playerList)}
+        onComplete={(playerList, pairs) => onPlayersUpdate(playerList, pairs)}
         initialPlayers={players}
+        initialTeammatePairs={teammatePairs}
       />
 
       {leaderboard.length > 0 && (

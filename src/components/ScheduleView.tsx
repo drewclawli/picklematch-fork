@@ -264,7 +264,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
               {/* Carousel */}
               <Carousel
-                opts={{ align: currentMatchIndex >= 0 ? "center" : "start", loop: false }}
+                opts={{ align: "start", loop: false }}
                 className="w-full"
                 setApi={(api) => {
                   if (api) {

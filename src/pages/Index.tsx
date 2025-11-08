@@ -176,10 +176,13 @@ const Index = () => {
     }
   };
 
-  const handlePlayersUpdate = async (playerList: string[]) => {
+  const handlePlayersUpdate = async (playerList: string[], teammatePairs?: { player1: string; player2: string }[]) => {
     setPlayers(playerList);
 
     if (!gameConfig) return;
+
+    const updatedConfig = { ...gameConfig, teammatePairs };
+    setGameConfig(updatedConfig);
 
     const schedule = generateSchedule(
       playerList,
@@ -187,7 +190,7 @@ const Index = () => {
       gameConfig.totalTime,
       gameConfig.courts,
       undefined,
-      gameConfig.teammatePairs,
+      teammatePairs,
       gameConfig.courtConfigs
     );
     setMatches(schedule);
@@ -199,6 +202,7 @@ const Index = () => {
           .update({
             players: playerList,
             matches: schedule as any,
+            game_config: updatedConfig as any,
           })
           .eq('id', gameId);
 
@@ -302,6 +306,7 @@ const Index = () => {
               onPlayersUpdate={handlePlayersUpdate}
               matches={matches}
               matchScores={matchScores}
+              teammatePairs={gameConfig?.teammatePairs}
             />
           )}
 
