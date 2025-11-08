@@ -152,7 +152,14 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
     const newScores = new Map(matchScores);
     newScores.set(matchId, { team1: team1Score, team2: team2Score });
+    
+    // Update matches with the new score
+    const updatedMatches = matches.map(m => 
+      m.id === matchId ? { ...m, score: { team1: team1Score, team2: team2Score } } : m
+    );
+    
     onMatchScoresUpdate(newScores);
+    onScheduleUpdate(updatedMatches, allPlayers); // This will save to DB and trigger realtime sync
     
     const newPending = new Map(pendingScores);
     newPending.delete(matchId);

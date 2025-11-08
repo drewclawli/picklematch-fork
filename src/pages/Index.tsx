@@ -59,6 +59,17 @@ const Index = () => {
     });
     return () => subscription.unsubscribe();
   }, []);
+  // Sync state from database matches
+  const syncMatchScoresFromMatches = (matches: Match[]) => {
+    const scoresMap = new Map<string, { team1: number; team2: number }>();
+    matches.forEach(match => {
+      if (match.score) {
+        scoresMap.set(match.id, match.score);
+      }
+    });
+    setMatchScores(scoresMap);
+  };
+
   useEffect(() => {
     if (!gameId) return;
     const channel = supabase.channel('game-updates').on('postgres_changes', {
@@ -69,9 +80,14 @@ const Index = () => {
     }, payload => {
       if (payload.eventType === 'UPDATE') {
         const updatedGame = payload.new;
-        setPlayers(updatedGame.players || []);
-        setMatches(updatedGame.matches as unknown as Match[] || []);
-        setGameConfig(updatedGame.game_config as unknown as GameConfig);
+        const newMatches = updatedGame.matches as unknown as Match[] || [];
+        const newPlayers = updatedGame.players || [];
+        const newConfig = updatedGame.game_config as unknown as GameConfig;
+        
+        setPlayers(newPlayers);
+        setMatches(newMatches);
+        setGameConfig(newConfig);
+        syncMatchScoresFromMatches(newMatches);
       }
     }).subscribe();
     return () => {
@@ -96,16 +112,19 @@ const Index = () => {
         toast.error("Game not found. Please check the code and try again.");
         return;
       }
+      const loadedMatches = data.matches as unknown as Match[] || [];
+      
       setGameId(data.id);
       setGameCode(data.game_code);
       setPlayers(data.players || []);
       setGameConfig(data.game_config as unknown as GameConfig);
-      setMatches(data.matches as unknown as Match[] || []);
+      setMatches(loadedMatches);
+      syncMatchScoresFromMatches(loadedMatches);
       setShowGameCodeDialog(false);
       if (data.game_config) {
         setSetupComplete(true);
       }
-      if (data.matches && Array.isArray(data.matches) && data.matches.length > 0) {
+      if (loadedMatches.length > 0) {
         setActiveSection("scheduler");
       } else {
         setActiveSection("setup");
@@ -188,14 +207,20 @@ const Index = () => {
     }
   };
   const handleScheduleUpdate = async (newMatches: Match[], newPlayers: string[]) => {
-    setMatches(newMatches);
+    // Preserve scores in matches before updating
+    const matchesWithScores = newMatches.map(match => ({
+      ...match,
+      score: matchScores.get(match.id)
+    }));
+    
+    setMatches(matchesWithScores);
     setPlayers(newPlayers);
     if (gameId) {
       try {
         const {
           error
         } = await supabase.from('games').update({
-          matches: newMatches as any,
+          matches: matchesWithScores as any,
           players: newPlayers
         }).eq('id', gameId);
         if (error) throw error;
