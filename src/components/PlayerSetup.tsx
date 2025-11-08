@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { X, Plus, Users, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { Match } from "@/lib/scheduler";
+import { validatePlayerName } from "@/lib/validation";
 
 interface PlayerSetupProps {
   onComplete: (players: string[], teammatePairs?: { player1: string; player2: string }[]) => void;
@@ -24,15 +25,31 @@ export const PlayerSetup = ({ onComplete, initialPlayers = [], initialTeammatePa
 
   const addPlayer = () => {
     const trimmedName = currentName.trim();
-    if (trimmedName && players.length < 20) {
-      // Check for duplicate names (case-insensitive)
-      if (players.some(p => p.toLowerCase() === trimmedName.toLowerCase())) {
-        toast.error("This player name already exists");
-        return;
-      }
-      setPlayers([...players, trimmedName]);
-      setCurrentName("");
+    
+    if (!trimmedName) {
+      return;
     }
+
+    // Validate player name format
+    const validation = validatePlayerName(trimmedName);
+    if (!validation.valid) {
+      toast.error(validation.error || "Invalid player name");
+      return;
+    }
+
+    if (players.length >= 20) {
+      toast.error("Maximum of 20 players allowed");
+      return;
+    }
+
+    // Check for duplicate names (case-insensitive)
+    if (players.some(p => p.toLowerCase() === trimmedName.toLowerCase())) {
+      toast.error("This player name already exists");
+      return;
+    }
+
+    setPlayers([...players, trimmedName]);
+    setCurrentName("");
   };
 
   const removePlayer = (index: number) => {
@@ -103,7 +120,7 @@ export const PlayerSetup = ({ onComplete, initialPlayers = [], initialTeammatePa
             onChange={(e) => setCurrentName(e.target.value)}
             onKeyPress={handleKeyPress}
             className="h-12 text-lg"
-            maxLength={30}
+            maxLength={50}
           />
         </div>
         <Button

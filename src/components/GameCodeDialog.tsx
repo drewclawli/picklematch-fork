@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { validateGameCode } from "@/lib/validation";
 
 interface GameCodeDialogProps {
   open: boolean;
@@ -17,11 +18,14 @@ export const GameCodeDialog = ({ open, onOpenChange, onJoinGame, onCreateGame }:
 
   const handleJoin = () => {
     const code = gameCode.trim().toUpperCase();
-    if (code.length === 6) {
-      onJoinGame(code);
-    } else {
-      toast.error("Please enter a valid 6-character game code");
+    
+    const validation = validateGameCode(code);
+    if (!validation.valid) {
+      toast.error(validation.error || "Invalid game code");
+      return;
     }
+    
+    onJoinGame(code);
   };
 
   return (

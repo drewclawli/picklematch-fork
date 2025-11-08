@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { validateMatchScore } from "@/lib/validation";
 import {
   Carousel,
   CarouselContent,
@@ -63,10 +64,25 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
   }, [matches, matchScores]);
 
   const updatePendingScore = (matchId: string, team: "team1" | "team2", value: string) => {
-    const score = value === '' ? '' : Number(value);
+    // Allow empty string for partial input
+    if (value === '') {
+      const current = pendingScores.get(matchId) || matchScores.get(matchId) || { team1: '', team2: '' };
+      const newPending = new Map(pendingScores);
+      newPending.set(matchId, { ...current, [team]: '' });
+      setPendingScores(newPending);
+      return;
+    }
+
+    // Validate the score
+    const validation = validateMatchScore(value);
+    if (!validation.valid) {
+      toast({ title: "Invalid score", description: validation.error, variant: "destructive" });
+      return;
+    }
+
     const current = pendingScores.get(matchId) || matchScores.get(matchId) || { team1: '', team2: '' };
     const newPending = new Map(pendingScores);
-    newPending.set(matchId, { ...current, [team]: score });
+    newPending.set(matchId, { ...current, [team]: validation.value! });
     setPendingScores(newPending);
   };
 
