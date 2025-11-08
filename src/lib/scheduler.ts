@@ -86,6 +86,18 @@ export function generateSchedule(
     const slotEndTime = slotStartTime + gameDuration;
     const availablePlayers = new Set(players);
     
+    // Get players scheduled in previous slot by court to prevent cross-court disruptions
+    const previousSlotPlayersByCourt = new Map<number, Set<string>>();
+    if (slot > 0) {
+      const prevSlotStart = (slot - 1) * gameDuration;
+      matches
+        .filter(m => m.startTime === prevSlotStart)
+        .forEach(m => {
+          const playersInMatch = new Set([...m.team1, ...m.team2]);
+          previousSlotPlayersByCourt.set(m.court, playersInMatch);
+        });
+    }
+    
     // Enforce rest after consecutive matches or recent play
     players.forEach((player) => {
       const stats = playerStats.get(player)!;
@@ -117,10 +129,23 @@ export function generateSchedule(
     for (let court = 0; court < matchesPerSlot; court++) {
       const courtConfig = finalCourtConfigs[court];
       const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
+      const courtNumber = court + 1;
+      
+      // Get players who were on THIS court in previous slot (they can stay on same court)
+      const playersOnThisCourtPrevSlot = previousSlotPlayersByCourt.get(courtNumber) || new Set();
+      
+      // Get players who were on OTHER courts in previous slot (they should NOT be on this court)
+      const playersOnOtherCourtsPrevSlot = new Set<string>();
+      previousSlotPlayersByCourt.forEach((players, prevCourt) => {
+        if (prevCourt !== courtNumber) {
+          players.forEach(p => playersOnOtherCourtsPrevSlot.add(p));
+        }
+      });
       
       // Filter out players already scheduled on other courts in this slot
+      // AND players who were on different courts in previous slot (prevents cross-court rushes)
       const availableForThisCourt = Array.from(availablePlayers).filter(
-        p => !playersScheduledThisSlot.has(p)
+        p => !playersScheduledThisSlot.has(p) && !playersOnOtherCourtsPrevSlot.has(p)
       );
       
       if (availableForThisCourt.length < playersNeeded) continue;
@@ -540,6 +565,18 @@ export function regenerateScheduleFromSlot(
     const slotEndTime = slotStartTime + gameDuration;
     const availablePlayers = new Set(players);
     
+    // Get players scheduled in previous slot by court to prevent cross-court disruptions
+    const previousSlotPlayersByCourt = new Map<number, Set<string>>();
+    if (slot > 0) {
+      const prevSlotStart = (slot - 1) * gameDuration;
+      newMatches
+        .filter(m => m.startTime === prevSlotStart)
+        .forEach(m => {
+          const playersInMatch = new Set([...m.team1, ...m.team2]);
+          previousSlotPlayersByCourt.set(m.court, playersInMatch);
+        });
+    }
+    
     // Enforce rest after consecutive matches or recent play
     players.forEach((player) => {
       const stats = playerStats.get(player);
@@ -573,10 +610,23 @@ export function regenerateScheduleFromSlot(
     for (let court = 0; court < matchesPerSlot; court++) {
       const courtConfig = finalCourtConfigs[court];
       const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
+      const courtNumber = court + 1;
+      
+      // Get players who were on THIS court in previous slot (they can stay on same court)
+      const playersOnThisCourtPrevSlot = previousSlotPlayersByCourt.get(courtNumber) || new Set();
+      
+      // Get players who were on OTHER courts in previous slot (they should NOT be on this court)
+      const playersOnOtherCourtsPrevSlot = new Set<string>();
+      previousSlotPlayersByCourt.forEach((players, prevCourt) => {
+        if (prevCourt !== courtNumber) {
+          players.forEach(p => playersOnOtherCourtsPrevSlot.add(p));
+        }
+      });
       
       // Filter out players already scheduled on other courts in this slot
+      // AND players who were on different courts in previous slot (prevents cross-court rushes)
       const availableForThisCourt = Array.from(availablePlayers).filter(
-        p => !playersScheduledThisSlot.has(p)
+        p => !playersScheduledThisSlot.has(p) && !playersOnOtherCourtsPrevSlot.has(p)
       );
       
       if (availableForThisCourt.length < playersNeeded) continue;
