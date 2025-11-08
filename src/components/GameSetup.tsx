@@ -252,7 +252,7 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
             Back
           </Button>
         )}
-        <Button onClick={handleSubmit} size="lg" className={`h-14 text-base bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 ${onBack ? 'flex-1' : 'w-full'}`}>
+        <Button onClick={handleSubmit} size="lg" className={`h-14 text-base font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-sport hover:shadow-glow hover:scale-105 transition-all ${onBack ? 'flex-1' : 'w-full'}`}>
           Continue
         </Button>
       </div>

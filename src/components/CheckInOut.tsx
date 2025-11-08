@@ -1,5 +1,6 @@
 import { PlayerSetup } from "@/components/PlayerSetup";
 import { Match } from "@/lib/scheduler";
+import { Users } from "lucide-react";
 
 interface CheckInOutProps {
   gameCode: string;
@@ -15,7 +16,10 @@ interface CheckInOutProps {
 export const CheckInOut = ({ gameCode, players, onPlayersUpdate, matches = [], matchScores = new Map(), teammatePairs = [], onNavigateToMatches, hasStartedMatches = false }: CheckInOutProps) => {
   return (
     <div className="space-y-6">
-      <div className="text-center">
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-accent mb-3 shadow-sport">
+          <Users className="w-7 h-7 text-white" />
+        </div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Player Check In/Out</h2>
         <p className="text-muted-foreground">Add or remove players from the game</p>
       </div>

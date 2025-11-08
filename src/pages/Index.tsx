@@ -354,23 +354,31 @@ const Index = () => {
     </div>;
   }
 
-  return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 pb-24">
-      <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-accent/5 pb-24 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <div className="absolute top-20 right-10 w-64 h-64 bg-primary rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-96 h-96 bg-accent rounded-full blur-3xl"></div>
+      </div>
+      
+      <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 relative z-10">
         <header className="text-center mb-8 sm:mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-lg">
-              <Trophy className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-sport animate-pulse">
+              <Trophy className="w-9 h-9 text-white drop-shadow-lg" />
             </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">TeamUp! Social Play</h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
-            Smart team assignment & scoring for racket sports
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient_6s_linear_infinite]">
+            TeamUp! Social Play
+          </h1>
+          <p className="text-muted-foreground text-base sm:text-lg font-medium">
+            🎾 Smart team assignment & scoring for racket sports 🏓
           </p>
         </header>
 
         <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
 
-        <Card className="p-6 sm:p-8 md:p-10 shadow-xl min-h-[60vh]">
+        <Card className="p-6 sm:p-8 md:p-10 shadow-sport border-2 border-primary/10 min-h-[60vh] backdrop-blur-sm bg-card/80">
           {activeSection === "setup" && <div className="space-y-6">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-foreground mb-2">Game Setup</h2>

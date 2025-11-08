@@ -8,44 +8,53 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 240 15% 15%;
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 15% 15%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 15% 15%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 118 44% 48%;
+    /* Vibrant sport-themed colors - Pickleball inspired */
+    --primary: 142 76% 36%;  /* Vibrant court green */
     --primary-foreground: 0 0% 100%;
+    --primary-glow: 142 76% 46%;
 
-    --secondary: 240 10% 94%;
-    --secondary-foreground: 240 15% 15%;
+    --secondary: 195 100% 95%;  /* Light blue background */
+    --secondary-foreground: 142 76% 26%;
 
-    --muted: 240 10% 94%;
-    --muted-foreground: 240 10% 45%;
+    --muted: 195 20% 96%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 13 85% 70%;
+    --accent: 195 92% 48%;  /* Electric blue accent */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 240 15% 88%;
-    --input: 240 15% 88%;
-    --ring: 118 44% 48%;
+    --border: 142 30% 85%;
+    --input: 142 20% 92%;
+    --ring: 142 76% 36%;
 
     --radius: 0.75rem;
     
-    --success: 118 44% 48%;
-    --warning: 50 100% 50%;
+    --success: 142 76% 36%;
+    --warning: 45 93% 47%;
     
-    --gradient-primary: linear-gradient(135deg, hsl(118 44% 48%), hsl(118 44% 60%));
-    --gradient-accent: linear-gradient(135deg, hsl(13 85% 70%), hsl(339 65% 75%));
+    /* Sport-themed gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(195 92% 48%));
+    --gradient-court: linear-gradient(135deg, hsl(142 76% 46%), hsl(142 76% 36%));
+    --gradient-accent: linear-gradient(135deg, hsl(195 92% 58%), hsl(195 92% 48%));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--secondary) / 0.3));
     
-    --shadow-elevated: 0 4px 20px -4px hsl(240 15% 15% / 0.15);
-    --shadow-match: 0 2px 12px -2px hsl(118 44% 48% / 0.2);
+    /* Sport-themed shadows with glow effects */
+    --shadow-elevated: 0 8px 24px -4px hsl(142 76% 36% / 0.2);
+    --shadow-match: 0 4px 16px -2px hsl(142 76% 36% / 0.25);
+    --shadow-sport: 0 8px 24px -4px hsl(142 76% 36% / 0.3);
+    --shadow-glow: 0 0 30px hsl(142 76% 46% / 0.4);
+    --shadow-accent: 0 8px 24px -4px hsl(195 92% 48% / 0.3);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -67,39 +76,51 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 240 20% 10%;
+    --background: 222 47% 11%;  /* Dark court blue */
     --foreground: 0 0% 98%;
 
-    --card: 240 18% 14%;
+    --card: 222 47% 14%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 18% 14%;
+    --popover: 222 47% 11%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 118 44% 55%;
-    --primary-foreground: 0 0% 100%;
+    /* Sport-themed dark mode */
+    --primary: 142 76% 46%;  /* Bright green for dark mode */
+    --primary-foreground: 222 47% 11%;
+    --primary-glow: 142 76% 56%;
 
-    --secondary: 240 15% 20%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 222 47% 18%;
+    --secondary-foreground: 142 76% 56%;
 
-    --muted: 240 15% 20%;
-    --muted-foreground: 240 10% 60%;
+    --muted: 222 40% 20%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 13 85% 65%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 195 92% 58%;  /* Bright blue accent */
+    --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 240 15% 25%;
-    --input: 240 15% 25%;
-    --ring: 118 44% 55%;
+    --border: 222 40% 22%;
+    --input: 222 40% 20%;
+    --ring: 142 76% 46%;
     
-    --success: 118 44% 55%;
-    --warning: 50 100% 50%;
+    --success: 142 76% 46%;
+    --warning: 45 93% 57%;
     
-    --shadow-elevated: 0 4px 20px -4px hsl(0 0% 0% / 0.4);
-    --shadow-match: 0 2px 12px -2px hsl(118 44% 55% / 0.3);
+    /* Sport-themed gradients dark */
+    --gradient-primary: linear-gradient(135deg, hsl(142 76% 46%), hsl(195 92% 58%));
+    --gradient-court: linear-gradient(135deg, hsl(142 76% 56%), hsl(142 76% 46%));
+    --gradient-accent: linear-gradient(135deg, hsl(195 92% 68%), hsl(195 92% 58%));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--secondary) / 0.3));
+    
+    /* Sport-themed shadows dark with glow */
+    --shadow-elevated: 0 8px 24px -4px hsl(0 0% 0% / 0.5);
+    --shadow-match: 0 4px 16px -2px hsl(142 76% 46% / 0.35);
+    --shadow-sport: 0 8px 24px -4px hsl(142 76% 46% / 0.4);
+    --shadow-glow: 0 0 30px hsl(142 76% 56% / 0.5);
+    --shadow-accent: 0 8px 24px -4px hsl(195 92% 58% / 0.4);
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
