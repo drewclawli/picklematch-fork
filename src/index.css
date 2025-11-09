@@ -43,6 +43,14 @@ All colors MUST be HSL.
     --success: 142 76% 36%;
     --warning: 45 93% 47%;
     
+    /* Court-specific colors */
+    --court-a: 142 76% 36%;  /* Green for Court A */
+    --court-a-foreground: 0 0% 100%;
+    --court-a-light: 142 76% 92%;  /* Light green for upcoming */
+    --court-b: 195 92% 48%;  /* Blue for Court B */
+    --court-b-foreground: 0 0% 100%;
+    --court-b-light: 195 92% 92%;  /* Light blue for upcoming */
+    
     /* Sport-themed gradients */
     --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(195 92% 48%));
     --gradient-court: linear-gradient(135deg, hsl(142 76% 46%), hsl(142 76% 36%));
@@ -108,6 +116,14 @@ All colors MUST be HSL.
     
     --success: 142 76% 46%;
     --warning: 45 93% 57%;
+    
+    /* Court-specific colors dark */
+    --court-a: 142 76% 46%;  /* Bright green for Court A */
+    --court-a-foreground: 222 47% 11%;
+    --court-a-light: 142 76% 25%;  /* Darker green for upcoming */
+    --court-b: 195 92% 58%;  /* Bright blue for Court B */
+    --court-b-foreground: 222 47% 11%;
+    --court-b-light: 195 92% 25%;  /* Darker blue for upcoming */
     
     /* Sport-themed gradients dark */
     --gradient-primary: linear-gradient(135deg, hsl(142 76% 46%), hsl(195 92% 58%));

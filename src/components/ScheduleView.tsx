@@ -10,6 +10,7 @@ import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Tim
 import { useToast } from "@/hooks/use-toast";
 import { validateMatchScore } from "@/lib/validation";
 import { useStopwatch } from "@/hooks/use-stopwatch";
+import { cn } from "@/lib/utils";
 import {
   Carousel,
   CarouselContent,
@@ -680,7 +681,10 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
             <div key={courtConfig.courtNumber} className="space-y-2">
               {/* Court Header */}
               <div className="flex items-center justify-between gap-2">
-                <Badge className="bg-primary/20 text-primary text-sm px-2 py-1">
+                <Badge className={cn(
+                  "text-sm px-2 py-1",
+                  courtConfig.courtNumber === 1 ? "bg-court-a text-court-a-foreground" : "bg-court-b text-court-b-foreground"
+                )}>
                   Court {String.fromCharCode(64 + courtConfig.courtNumber)}
                 </Badge>
                 
@@ -739,27 +743,27 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
                     return (
                       <CarouselItem key={match.id} className="pl-2 basis-[80%] sm:basis-[75%] md:basis-[80%]">
-                        <Card className={`p-2 transition-all max-w-full ${
-                          isCurrentMatch 
-                            ? 'border-2 border-primary bg-primary/5 shadow-lg' 
-                            : isNextMatch 
-                            ? 'border border-accent bg-accent/5'
-                            : isPreviousMatch 
-                            ? 'bg-muted/40 opacity-60' 
-                            : 'bg-card opacity-80'
-                        }`}>
+                        <Card className={cn(
+                          "p-2 transition-all max-w-full border-2",
+                          isCurrentMatch && courtConfig.courtNumber === 1 && 'border-court-a bg-court-a/5 shadow-lg',
+                          isCurrentMatch && courtConfig.courtNumber === 2 && 'border-court-b bg-court-b/5 shadow-lg',
+                          isNextMatch && courtConfig.courtNumber === 1 && 'border-court-a/30 bg-court-a-light',
+                          isNextMatch && courtConfig.courtNumber === 2 && 'border-court-b/30 bg-court-b-light',
+                          isPreviousMatch && 'bg-muted/40 opacity-60 border-muted',
+                          !isCurrentMatch && !isNextMatch && !isPreviousMatch && 'bg-card opacity-80 border-border'
+                        )}>
                           <div className="space-y-1 max-w-full overflow-hidden">
                             {/* Match Status Header */}
                             <div className="flex items-center justify-between">
-                              <Badge className={`text-xs py-0 ${
-                                isCurrentMatch 
-                                  ? 'bg-primary text-primary-foreground' 
-                                  : isNextMatch
-                                  ? 'bg-accent text-accent-foreground'
-                                  : isPreviousMatch
-                                  ? 'bg-muted text-muted-foreground'
-                                  : 'bg-secondary text-secondary-foreground'
-                              }`}>
+                              <Badge className={cn(
+                                "text-xs py-0",
+                                isCurrentMatch && courtConfig.courtNumber === 1 && 'bg-court-a text-court-a-foreground',
+                                isCurrentMatch && courtConfig.courtNumber === 2 && 'bg-court-b text-court-b-foreground',
+                                isNextMatch && courtConfig.courtNumber === 1 && 'border-court-a text-court-a bg-transparent',
+                                isNextMatch && courtConfig.courtNumber === 2 && 'border-court-b text-court-b bg-transparent',
+                                isPreviousMatch && 'bg-muted text-muted-foreground',
+                                !isCurrentMatch && !isNextMatch && !isPreviousMatch && 'bg-secondary text-secondary-foreground'
+                              )}>
                                 {String.fromCharCode(64 + courtConfig.courtNumber)}{idx + 1} {isCurrentMatch ? '• Current' : isNextMatch ? '• Up Next' : isPreviousMatch ? '• Done' : ''}
                               </Badge>
                               <Badge variant="outline" className="text-[10px] py-0">

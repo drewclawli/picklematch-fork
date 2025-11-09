@@ -57,6 +57,16 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "court-a": {
+          DEFAULT: "hsl(var(--court-a))",
+          foreground: "hsl(var(--court-a-foreground))",
+          light: "hsl(var(--court-a-light))",
+        },
+        "court-b": {
+          DEFAULT: "hsl(var(--court-b))",
+          foreground: "hsl(var(--court-b-foreground))",
+          light: "hsl(var(--court-b-light))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

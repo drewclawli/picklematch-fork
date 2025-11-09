@@ -11,8 +11,8 @@ export const BottomNav = ({
   disabled
 }: BottomNavProps) => {
   return <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t-2 border-primary/20 shadow-sport">
-      <div className="max-w-5xl mx-auto px-2">
-        <div className="flex items-center justify-around py-3">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="flex items-center justify-between py-3">
           <button onClick={() => onSectionChange("setup")} disabled={disabled} className={cn("flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all hover:scale-105", activeSection === "setup" ? "text-primary bg-gradient-to-br from-primary/20 to-primary/10 shadow-md" : "text-muted-foreground hover:text-primary hover:bg-primary/5", disabled && "opacity-50 cursor-not-allowed")}>
             <Settings className="w-5 h-5" />
             <span className="text-xs font-semibold">Setup</span>
