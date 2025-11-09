@@ -103,7 +103,7 @@ export const PlayerSetup = ({
       addPlayer();
     }
   };
-  return <div className="flex flex-col h-full">
+  return <div className="flex flex-col h-full min-h-0">
       <div className="flex-shrink-0 space-y-4">
         <div className="flex gap-2">
           <div className="flex-1">

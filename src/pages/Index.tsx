@@ -465,7 +465,7 @@ const Index = () => {
 
         <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
 
-        <Card className="p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col mb-14 overflow-hidden">
+        <Card className="p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col mb-14">
           {activeSection === "setup" && <div className="flex flex-col h-full">
               {gameId && (
                 <div className="flex justify-end mb-2">
