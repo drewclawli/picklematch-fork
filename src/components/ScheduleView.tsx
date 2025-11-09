@@ -719,7 +719,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
               {/* Carousel - Compact height for better fit */}
               <Carousel
                 opts={{ align: "start", loop: false }}
-                className="w-full max-h-[calc(100vh-280px)]"
+                className="w-full max-h-[calc(100vh-240px)]"
                 setApi={(api) => {
                   if (api) {
                     setCarouselApis(prev => new Map(prev).set(courtConfig.courtNumber, api));
@@ -739,7 +739,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
                     return (
                       <CarouselItem key={match.id} className="pl-2 basis-[75%] sm:basis-[70%] lg:basis-1/3">
-                        <Card className={`p-3 transition-all ${
+                        <Card className={`p-2 transition-all ${
                           isCurrentMatch 
                             ? 'border-2 border-primary bg-primary/5 shadow-lg' 
                             : isNextMatch 
@@ -748,10 +748,10 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                             ? 'bg-muted/40 opacity-60' 
                             : 'bg-card opacity-80'
                         }`}>
-                          <div className="space-y-2">
+                          <div className="space-y-1">
                             {/* Match Status Header */}
                             <div className="flex items-center justify-between">
-                              <Badge className={
+                              <Badge className={`text-xs py-0 ${
                                 isCurrentMatch 
                                   ? 'bg-primary text-primary-foreground' 
                                   : isNextMatch
@@ -759,38 +759,37 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                   : isPreviousMatch
                                   ? 'bg-muted text-muted-foreground'
                                   : 'bg-secondary text-secondary-foreground'
-                              }>
+                              }`}>
                                 {String.fromCharCode(64 + courtConfig.courtNumber)}{idx + 1} {isCurrentMatch ? '• Current' : isNextMatch ? '• Up Next' : isPreviousMatch ? '• Done' : ''}
                               </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                <Clock className="w-3 h-3 mr-1" />
+                              <Badge variant="outline" className="text-[10px] py-0">
+                                <Clock className="w-2.5 h-2.5 mr-0.5" />
                                 {isCurrentMatch 
-                                  ? `Started ${match.clockStartTime || new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                                  : `Est. ${match.clockStartTime || new Date(Date.now() + match.startTime * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                                  ? `${match.clockStartTime || new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                                  : `${match.clockStartTime || new Date(Date.now() + match.startTime * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
                                 }
                               </Badge>
                             </div>
 
                             {/* Stopwatch for Current Match */}
                             {isCurrentMatch && (
-                              <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/20">
-                                <Timer className="w-4 h-4 text-primary animate-pulse" />
-                                <span className="text-lg font-bold text-primary">{formattedTime}</span>
-                                <span className="text-xs text-muted-foreground">elapsed</span>
+                              <div className="flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg bg-primary/10 border border-primary/20">
+                                <Timer className="w-3 h-3 text-primary animate-pulse" />
+                                <span className="text-sm font-bold text-primary">{formattedTime}</span>
                               </div>
                             )}
 
                             {/* Team 1 */}
-                            <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                            <div className="flex items-center gap-2 p-1.5 rounded-lg bg-secondary/50">
                               <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                <Users className="w-4 h-4 text-primary flex-shrink-0" />
+                                <Users className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                                 {editingMatch === match.id ? (
                                   <div className="flex-1 min-w-0 space-y-1">
                                     <Select
                                       value={editedTeams.team1[0] || ""}
                                       onValueChange={(v) => updateEditedPlayer('team1', 0, v)}
                                     >
-                                      <SelectTrigger className="h-7 text-sm">
+                                      <SelectTrigger className="h-6 text-xs">
                                         <SelectValue placeholder="Player 1" />
                                       </SelectTrigger>
                                       <SelectContent className="z-50">
@@ -806,7 +805,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                         value={editedTeams.team1[1] || ""}
                                         onValueChange={(v) => updateEditedPlayer('team1', 1, v)}
                                       >
-                                        <SelectTrigger className="h-7 text-sm">
+                                        <SelectTrigger className="h-6 text-xs">
                                           <SelectValue placeholder="Player 2" />
                                         </SelectTrigger>
                                         <SelectContent className="z-50">
@@ -820,10 +819,10 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                     )}
                                   </div>
                                 ) : (
-                                  <div className="font-semibold text-sm min-w-0">
+                                  <div className="font-semibold text-xs min-w-0">
                                     <div className="truncate">{match.team1[0]}</div>
                                     {!match.isSingles && match.team1[1] && (
-                                      <div className="text-muted-foreground text-xs truncate">{match.team1[1]}</div>
+                                      <div className="text-muted-foreground text-[10px] truncate">{match.team1[1]}</div>
                                     )}
                                   </div>
                                 )}
@@ -835,33 +834,33 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                   value={scores.team1}
                                   onChange={(e) => updatePendingScore(match.id, "team1", e.target.value)}
                                   placeholder="0"
-                                  className="w-14 h-10 text-center text-xl font-bold flex-shrink-0"
+                                  className="w-12 h-8 text-center text-lg font-bold flex-shrink-0"
                                   disabled={isCompleted && !hasPending}
                                 />
                               ) : confirmedScores ? (
-                                <div className="w-14 h-10 flex items-center justify-center text-xl font-bold">
+                                <div className="w-12 h-8 flex items-center justify-center text-lg font-bold">
                                   {confirmedScores.team1}
                                 </div>
                               ) : (
-                                <div className="w-14 h-10 flex items-center justify-center text-muted-foreground">
+                                <div className="w-12 h-8 flex items-center justify-center text-muted-foreground">
                                   -
                                 </div>
                               )}
                             </div>
 
-                            <div className="text-center text-xs font-bold text-muted-foreground">VS</div>
+                            <div className="text-center text-[10px] font-bold text-muted-foreground">VS</div>
 
                             {/* Team 2 */}
-                            <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                            <div className="flex items-center gap-2 p-1.5 rounded-lg bg-secondary/50">
                               <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                <Users className="w-4 h-4 text-accent flex-shrink-0" />
+                                <Users className="w-3.5 h-3.5 text-accent flex-shrink-0" />
                                 {editingMatch === match.id ? (
                                   <div className="flex-1 min-w-0 space-y-1">
                                     <Select
                                       value={editedTeams.team2[0] || ""}
                                       onValueChange={(v) => updateEditedPlayer('team2', 0, v)}
                                     >
-                                      <SelectTrigger className="h-7 text-sm">
+                                      <SelectTrigger className="h-6 text-xs">
                                         <SelectValue placeholder="Player 1" />
                                       </SelectTrigger>
                                       <SelectContent className="z-50">
@@ -877,7 +876,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                         value={editedTeams.team2[1] || ""}
                                         onValueChange={(v) => updateEditedPlayer('team2', 1, v)}
                                       >
-                                        <SelectTrigger className="h-7 text-sm">
+                                        <SelectTrigger className="h-6 text-xs">
                                           <SelectValue placeholder="Player 2" />
                                         </SelectTrigger>
                                         <SelectContent className="z-50">
@@ -891,10 +890,10 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                     )}
                                   </div>
                                 ) : (
-                                  <div className="font-semibold text-sm min-w-0">
+                                  <div className="font-semibold text-xs min-w-0">
                                     <div className="truncate">{match.team2[0]}</div>
                                     {!match.isSingles && match.team2[1] && (
-                                      <div className="text-muted-foreground text-xs truncate">{match.team2[1]}</div>
+                                      <div className="text-muted-foreground text-[10px] truncate">{match.team2[1]}</div>
                                     )}
                                   </div>
                                 )}
@@ -906,15 +905,15 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                   value={scores.team2}
                                   onChange={(e) => updatePendingScore(match.id, "team2", e.target.value)}
                                   placeholder="0"
-                                  className="w-14 h-10 text-center text-xl font-bold flex-shrink-0"
+                                  className="w-12 h-8 text-center text-lg font-bold flex-shrink-0"
                                   disabled={isCompleted && !hasPending}
                                 />
                               ) : confirmedScores ? (
-                                <div className="w-14 h-10 flex items-center justify-center text-xl font-bold">
+                                <div className="w-12 h-8 flex items-center justify-center text-lg font-bold">
                                   {confirmedScores.team2}
                                 </div>
                               ) : (
-                                <div className="w-14 h-10 flex items-center justify-center text-muted-foreground">
+                                <div className="w-12 h-8 flex items-center justify-center text-muted-foreground">
                                   -
                                 </div>
                               )}
@@ -922,17 +921,19 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 
                             {/* Action Buttons for Current Match */}
                             {isCurrentMatch && editingMatch === match.id && (
-                              <div className="flex gap-2">
+                              <div className="flex gap-1.5 pt-0.5">
                                 <Button 
                                   onClick={saveEditedPlayers}
-                                  className="flex-1"
+                                  className="flex-1 h-8 text-xs"
+                                  size="sm"
                                 >
-                                  Save Players
+                                  Save
                                 </Button>
                                 <Button 
                                   onClick={cancelEditingPlayers}
                                   variant="outline"
-                                  className="flex-1"
+                                  className="flex-1 h-8 text-xs"
+                                  size="sm"
                                 >
                                   Cancel
                                 </Button>
@@ -944,24 +945,27 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                                 <Button 
                                   onClick={() => startEditingPlayers(match.id)}
                                   variant="outline"
-                                  className="w-full"
+                                  className="w-full h-8 text-xs"
+                                  size="sm"
                                 >
                                   Change Players
                                 </Button>
                                 {!isCompleted && (
                                   <Button 
                                     onClick={() => confirmScore(match.id)}
-                                    className="w-full"
+                                    className="w-full h-8 text-xs"
+                                    size="sm"
                                     disabled={!hasPending}
                                   >
-                                    Confirm Score & Next
+                                    Confirm & Next
                                   </Button>
                                 )}
                                 {isCompleted && !hasPending && (
                                   <Button 
                                     onClick={() => editScore(match.id)}
                                     variant="outline"
-                                    className="w-full"
+                                    className="w-full h-8 text-xs"
+                                    size="sm"
                                   >
                                     Edit Score
                                   </Button>
