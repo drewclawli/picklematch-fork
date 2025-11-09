@@ -465,7 +465,7 @@ const Index = () => {
 
         <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
 
-        <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col mb-12 overflow-hidden">
+        <Card className="p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col mb-14 overflow-hidden">
           {activeSection === "setup" && <div className="flex flex-col h-full">
               {gameId && (
                 <div className="flex justify-end mb-2">
@@ -473,7 +473,7 @@ const Index = () => {
                     onClick={startNewSession} 
                     variant="outline"
                     size="sm"
-                    className="gap-1 h-7 text-xs"
+                    className="gap-1 h-8 text-xs"
                   >
                     New Session
                   </Button>
@@ -482,11 +482,11 @@ const Index = () => {
               <div className="flex-1 overflow-y-auto">
                 <GameSetup onComplete={handleGameConfigComplete} gameCode={gameCode} />
               </div>
-              <div className="pt-2 border-t mt-2 flex-shrink-0">
+              <div className="pt-3 border-t mt-3 flex-shrink-0 bg-card/95 backdrop-blur-sm">
                 <Button 
                   onClick={handleGameConfigComplete.bind(null, gameConfig || { gameDuration: 10, totalTime: 60, courts: 2 })} 
-                  size="sm" 
-                  className="w-full h-9 text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-sport"
+                  size="default" 
+                  className="w-full h-11 text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-sport"
                   disabled={!gameConfig}
                 >
                   Continue
