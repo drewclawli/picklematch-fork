@@ -441,14 +441,14 @@ const Index = () => {
     </div>;
   }
 
-  return <div className="h-screen bg-gradient-to-br from-background via-secondary/30 to-accent/5 relative overflow-hidden flex flex-col">
+  return <div className="h-screen bg-gradient-to-br from-background via-secondary/30 to-accent/5 relative flex flex-col">
       {/* Decorative background elements */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div className="absolute top-20 right-10 w-64 h-64 bg-primary rounded-full blur-3xl"></div>
         <div className="absolute bottom-20 left-10 w-96 h-96 bg-accent rounded-full blur-3xl"></div>
       </div>
       
-      <div className="max-w-5xl mx-auto p-2 w-full relative z-10 flex flex-col h-full">
+      <div className="max-w-5xl mx-auto p-2 w-full relative z-10 flex flex-col h-full min-h-0">
         <header className="text-center py-2 flex-shrink-0">
           <div className="flex items-center justify-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-sport">
@@ -465,7 +465,7 @@ const Index = () => {
 
         <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
 
-        <Card className="p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col mb-14">
+        <Card className="p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
           {activeSection === "setup" && <div className="flex flex-col h-full">
               {gameId && (
                 <div className="flex justify-end mb-2">
@@ -500,7 +500,7 @@ const Index = () => {
               <p className="text-muted-foreground">Please complete game setup and add players first</p>
             </div>}
 
-          {activeSection === "players" && gameCode && <div className="flex-1 min-h-0">
+          {activeSection === "players" && gameCode && <div className="flex-1 min-h-0 h-full">
               <CheckInOut gameCode={gameCode} players={players} onPlayersUpdate={handlePlayersUpdate} matches={matches} matchScores={matchScores} teammatePairs={gameConfig?.teammatePairs} onNavigateToMatches={() => setActiveSection("matches")} hasStartedMatches={matches.length > 0} />
             </div>}
 
