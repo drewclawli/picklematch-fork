@@ -13,9 +13,12 @@ interface PlayerStats {
   player: string;
   wins: number;
   losses: number;
-  points: number; // Win points: 3 per win
-  totalScored: number; // Total points scored in matches (for tiebreaker)
   matchesPlayed: number;
+  winRate: number; // wins / matchesPlayed
+  totalScored: number; // Total points scored
+  totalAllowed: number; // Total points allowed
+  differential: number; // totalScored - totalAllowed
+  differentialPerGame: number; // differential / matchesPlayed
 }
 
 export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps) => {
@@ -23,8 +26,8 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
   const playerStats = players.map(player => {
     let wins = 0;
     let losses = 0;
-    let points = 0; // Win points (3 per win)
-    let totalScored = 0; // Total points scored in matches
+    let totalScored = 0; // Total points scored
+    let totalAllowed = 0; // Total points allowed
     let matchesPlayed = 0;
 
     matches.forEach(match => {
@@ -42,30 +45,44 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
 
       if (isInTeam1) {
         totalScored += team1Score;
+        totalAllowed += team2Score;
         if (team1Score > team2Score) {
           wins++;
-          points += 3; // 3 points per win
         } else if (team1Score < team2Score) {
           losses++;
         }
       } else if (isInTeam2) {
         totalScored += team2Score;
+        totalAllowed += team1Score;
         if (team2Score > team1Score) {
           wins++;
-          points += 3; // 3 points per win
         } else if (team2Score < team1Score) {
           losses++;
         }
       }
     });
 
-    return { player, wins, losses, points, totalScored, matchesPlayed };
+    const winRate = matchesPlayed > 0 ? wins / matchesPlayed : 0;
+    const differential = totalScored - totalAllowed;
+    const differentialPerGame = matchesPlayed > 0 ? differential / matchesPlayed : 0;
+
+    return { 
+      player, 
+      wins, 
+      losses, 
+      matchesPlayed, 
+      winRate, 
+      totalScored, 
+      totalAllowed, 
+      differential, 
+      differentialPerGame 
+    };
   });
 
-  // Sort by points (descending), then by totalScored (descending) as tiebreaker
+  // Sort by win rate (descending), then by differential per game (descending) as tiebreaker
   const sortedStats = playerStats.sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    return b.totalScored - a.totalScored;
+    if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+    return b.differentialPerGame - a.differentialPerGame;
   });
 
   // Only show leaderboard if there are completed matches
@@ -113,18 +130,26 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div className="text-center">
-                  <div className="text-xs font-bold text-accent">{stat.points}</div>
-                  <div className="text-[9px] text-muted-foreground">Pts</div>
+                  <div className="text-xs font-bold text-accent">{(stat.winRate * 100).toFixed(0)}%</div>
+                  <div className="text-[9px] text-muted-foreground">WR</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs font-bold text-primary">{stat.wins}</div>
-                  <div className="text-[9px] text-muted-foreground">Wins</div>
+                  <div className="text-xs font-bold text-primary">{stat.wins}-{stat.losses}</div>
+                  <div className="text-[9px] text-muted-foreground">W-L</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs font-bold text-muted-foreground">{stat.totalScored}</div>
-                  <div className="text-[9px] text-muted-foreground">Scored</div>
+                  <div className={`text-xs font-bold ${stat.differential >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {stat.differential >= 0 ? '+' : ''}{stat.differential}
+                  </div>
+                  <div className="text-[9px] text-muted-foreground">Diff</div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-xs font-bold ${stat.differentialPerGame >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {stat.differentialPerGame >= 0 ? '+' : ''}{stat.differentialPerGame.toFixed(1)}
+                  </div>
+                  <div className="text-[9px] text-muted-foreground">D/G</div>
                 </div>
               </div>
             </Card>
