@@ -32,7 +32,7 @@ export const MatchHistory = ({ matches, matchScores }: MatchHistoryProps) => {
         <p className="text-xs text-muted-foreground">{completedMatches.length} completed match{completedMatches.length !== 1 ? 'es' : ''}</p>
       </div>
 
-      <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+      <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto pb-4">
         {completedMatches.map((match) => {
           const score = matchScores.get(match.id);
           if (!score) return null;
