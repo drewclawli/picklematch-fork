@@ -738,7 +738,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                     const hasPending = pendingScores.has(match.id);
 
                     return (
-                      <CarouselItem key={match.id} className="pl-2 basis-[90%] sm:basis-[85%] md:basis-[95%]">
+                      <CarouselItem key={match.id} className="pl-2 basis-[80%] sm:basis-[75%] md:basis-[80%]">
                         <Card className={`p-2 transition-all max-w-full ${
                           isCurrentMatch 
                             ? 'border-2 border-primary bg-primary/5 shadow-lg' 
@@ -846,11 +846,11 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                               {isCurrentMatch && !editingMatch && (
                                 <Button 
                                   onClick={() => startEditingPlayers(match.id)}
-                                  variant="ghost"
-                                  className="h-5 px-2 text-[10px]"
+                                  variant="outline"
+                                  className="h-6 px-3 text-[10px]"
                                   size="sm"
                                 >
-                                  Change
+                                  Change Players
                                 </Button>
                               )}
                             </div>
