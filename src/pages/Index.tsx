@@ -482,7 +482,7 @@ const Index = () => {
               <div className="flex-1 overflow-y-auto">
                 <GameSetup onComplete={handleGameConfigComplete} gameCode={gameCode} />
               </div>
-              <div className="pt-3 pb-2 border-t mt-3 flex-shrink-0 bg-card/95 backdrop-blur-sm">
+              <div className="pt-3 pb-4 border-t mt-3 flex-shrink-0 bg-card/95 backdrop-blur-sm">
                 <Button 
                   onClick={handleGameConfigComplete.bind(null, gameConfig || { gameDuration: 10, totalTime: 60, courts: 2 })} 
                   size="default" 

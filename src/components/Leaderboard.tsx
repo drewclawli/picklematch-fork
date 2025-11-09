@@ -83,7 +83,7 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
         </div>
       </div>
 
-      <div className="space-y-1.5 max-h-[calc(100vh-280px)] overflow-y-auto pb-4">
+      <div className="space-y-1.5 max-h-[calc(100vh-240px)] overflow-y-auto pb-20">
         {sortedStats.map((stat, index) => (
           <Card
             key={stat.player}
