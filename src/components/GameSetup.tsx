@@ -46,7 +46,6 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
       courtConfigs[i] || { courtNumber: i + 1, type: 'doubles' as const }
     );
     setCourtConfigs(newConfigs);
-    onComplete({ gameDuration, totalTime, courts: newCourts, courtConfigs: newConfigs });
   };
 
   const toggleCourtType = (courtNumber: number) => {
@@ -56,11 +55,9 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
         : config
     );
     setCourtConfigs(newConfigs);
-    onComplete({ gameDuration, totalTime, courts, courtConfigs: newConfigs });
   };
 
-  // Update parent state whenever settings change
-  const updateConfig = () => {
+  const handleContinue = () => {
     onComplete({ gameDuration, totalTime, courts, courtConfigs });
   };
 
@@ -154,11 +151,7 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
             <Clock className="w-3.5 h-3.5" />
             Game Duration
           </Label>
-          <RadioGroup value={gameDuration.toString()} onValueChange={(v) => {
-            const newDuration = Number(v);
-            setGameDuration(newDuration);
-            onComplete({ gameDuration: newDuration, totalTime, courts, courtConfigs });
-          }}>
+          <RadioGroup value={gameDuration.toString()} onValueChange={(v) => setGameDuration(Number(v))}>
             <div className="grid grid-cols-3 gap-2">
               {[5, 10, 15].map((duration) => (
                 <label
@@ -182,11 +175,7 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
           <Label htmlFor="total-time" className="text-sm font-semibold">
             Total Play Time
           </Label>
-          <Select value={totalTime.toString()} onValueChange={(v) => {
-            const newTime = Number(v);
-            setTotalTime(newTime);
-            onComplete({ gameDuration, totalTime: newTime, courts, courtConfigs });
-          }}>
+          <Select value={totalTime.toString()} onValueChange={(v) => setTotalTime(Number(v))}>
             <SelectTrigger id="total-time" className="h-10 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -249,6 +238,15 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
           </div>
         </div>
       </div>
+
+      {/* Continue Button */}
+      <Button 
+        onClick={handleContinue}
+        size="lg" 
+        className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-sport"
+      >
+        Continue to Players
+      </Button>
     </div>
   );
 };
