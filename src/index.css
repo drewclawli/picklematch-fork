@@ -140,6 +140,10 @@ All colors MUST be HSL.
   }
 }
 
+@layer utilities {
+  .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 88px); }
+}
+
 @layer base {
   * {
     @apply border-border;

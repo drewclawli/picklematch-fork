@@ -39,7 +39,7 @@ export const CheckInOut = ({
         <p className="text-xs text-muted-foreground">Add or remove players. Matches will auto-reschedule.</p>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0">
         <PlayerSetup onComplete={(playerList, pairs) => {
       onPlayersUpdate(playerList, pairs);
       if (onNavigateToMatches) {

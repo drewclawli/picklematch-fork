@@ -129,7 +129,7 @@ export const PlayerSetup = ({
         {players.length} players added
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pb-28 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto pb-safe space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {players.map((player, index) => <Card key={index} className={`p-4 flex items-center justify-between hover:shadow-md transition-all ${selectedForPairing === player ? "border-2 border-primary bg-primary/5" : isPaired(player) ? "border border-accent/50 bg-accent/5" : ""}`}>
               <span className="font-medium text-foreground">{player}</span>
