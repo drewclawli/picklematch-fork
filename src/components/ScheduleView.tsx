@@ -679,7 +679,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
           return (
             <div key={courtConfig.courtNumber} className="space-y-2">
               {/* Court Header - Compact */}
-              <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg p-2 border border-primary/20">
+              <div className="flex items-center justify-between gap-2 bg-[hsl(var(--greenery))] rounded-lg p-2 border border-primary/20">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-primary/20 text-primary text-xs px-1.5 py-0.5">
                     Court {String.fromCharCode(64 + courtConfig.courtNumber)}
