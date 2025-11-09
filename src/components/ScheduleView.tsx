@@ -670,8 +670,8 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
         </div>
       </div>
 
-      {/* Courts Grid - Responsive layout to fit both courts on screen */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 px-2">
+      {/* Courts Grid - Vertical layout with Court A above Court B */}
+      <div className="grid grid-cols-1 gap-4 px-2">
         {courtConfigs.map((courtConfig) => {
           const courtMatches = matches.filter(m => m.court === courtConfig.courtNumber);
           const currentMatchIndex = courtMatches.findIndex(m => !matchScores.has(m.id));
