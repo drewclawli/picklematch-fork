@@ -30,7 +30,7 @@ export const CheckInOut = ({
   onNavigateToMatches,
   hasStartedMatches = false
 }: CheckInOutProps) => {
-  return <div className="flex flex-col min-h-0 space-y-3">
+  return <div className="space-y-3">
       <div className="text-center mb-3">
         <div className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent mb-2 shadow-sport">
           <Users className="w-5 h-5 text-white" />
@@ -39,13 +39,11 @@ export const CheckInOut = ({
         <p className="text-xs text-muted-foreground">Add or remove players. Matches will auto-reschedule.</p>
       </div>
 
-      <div className="flex-1 min-h-0">
-        <PlayerSetup onComplete={(playerList, pairs) => {
+      <PlayerSetup onComplete={(playerList, pairs) => {
       onPlayersUpdate(playerList, pairs);
       if (onNavigateToMatches) {
         onNavigateToMatches();
       }
     }} initialPlayers={players} initialTeammatePairs={teammatePairs} matches={matches} matchScores={matchScores} hasStartedMatches={hasStartedMatches} />
-      </div>
     </div>;
 };

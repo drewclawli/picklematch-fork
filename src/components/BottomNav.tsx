@@ -23,8 +23,8 @@ export const BottomNav = ({
             <span className="text-[10px] font-semibold truncate">Players</span>
           </button>
 
-          <button onClick={() => onSectionChange("matches")} disabled={disabled} className={cn("flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all relative -mt-4 flex-1 min-w-0", activeSection === "matches" ? "text-primary" : "text-muted-foreground hover:text-primary")}>
-            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all mx-auto", activeSection === "matches" ? "bg-gradient-to-br from-primary via-primary to-accent shadow-sport scale-110" : "bg-gradient-to-br from-muted to-muted/60 hover:from-primary/20 hover:to-accent/20 hover:scale-105 shadow-md")}>
+          <button onClick={() => onSectionChange("matches")} disabled={disabled} className={cn("flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all relative -mt-6 flex-1 min-w-0", activeSection === "matches" ? "text-primary" : "text-muted-foreground hover:text-primary")}>
+            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all mx-auto", activeSection === "matches" ? "bg-gradient-to-br from-primary via-primary to-accent shadow-sport scale-110 animate-pulse" : "bg-gradient-to-br from-muted to-muted/60 hover:from-primary/20 hover:to-accent/20 hover:scale-105 shadow-md")}>
               <Calendar className={cn("w-7 h-7", activeSection === "matches" ? "text-white drop-shadow-lg" : "text-foreground")} />
             </div>
             <span className={cn("text-[10px] font-semibold mt-0.5 truncate", activeSection === "matches" ? "text-primary" : "")}>Matches</span>
