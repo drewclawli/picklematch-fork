@@ -465,8 +465,8 @@ const Index = () => {
 
         <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
 
-        <Card className="p-6 sm:p-8 md:p-10 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex flex-col h-[calc(100vh-20rem)] pb-20">
-          {activeSection === "setup" && <div className="space-y-6 overflow-y-auto">
+        <Card className="p-6 sm:p-8 md:p-10 shadow-sport border-2 border-primary/10 min-h-[60vh] backdrop-blur-sm bg-card/80">
+          {activeSection === "setup" && <div className="space-y-6">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-foreground mb-2">Game Setup</h2>
                 <p className="text-muted-foreground">Configure your game settings</p>
@@ -491,19 +491,15 @@ const Index = () => {
               <p className="text-muted-foreground">Please complete game setup and add players first</p>
             </div>}
 
-          {activeSection === "players" && gameCode && <div className="overflow-y-auto">
-            <CheckInOut gameCode={gameCode} players={players} onPlayersUpdate={handlePlayersUpdate} matches={matches} matchScores={matchScores} teammatePairs={gameConfig?.teammatePairs} onNavigateToMatches={() => setActiveSection("matches")} hasStartedMatches={matches.length > 0} />
-          </div>}
+          {activeSection === "players" && gameCode && <CheckInOut gameCode={gameCode} players={players} onPlayersUpdate={handlePlayersUpdate} matches={matches} matchScores={matchScores} teammatePairs={gameConfig?.teammatePairs} onNavigateToMatches={() => setActiveSection("matches")} hasStartedMatches={matches.length > 0} />}
 
           {activeSection === "players" && !gameCode && <div className="text-center py-12">
               <p className="text-muted-foreground">Please complete game setup first</p>
             </div>}
 
-          {activeSection === "history" && <div className="overflow-y-auto">
-            <MatchHistory matches={matches} matchScores={matchScores} />
-          </div>}
+          {activeSection === "history" && <MatchHistory matches={matches} matchScores={matchScores} />}
 
-          {activeSection === "leaderboard" && <div className="space-y-6 overflow-y-auto">
+          {activeSection === "leaderboard" && <div className="space-y-6">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-foreground mb-2">Leaderboard</h2>
                 <p className="text-muted-foreground">Player rankings and stats</p>

@@ -1,18 +1,23 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Match, regenerateScheduleFromSlot, CourtConfig } from "@/lib/scheduler";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Trophy } from "lucide-react";
+import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { validateMatchScore } from "@/lib/validation";
 import { useStopwatch } from "@/hooks/use-stopwatch";
-import { CurrentMatchCard } from "./match-cards/CurrentMatchCard";
-import { UpNextMatchCard } from "./match-cards/UpNextMatchCard";
-import { CompletedMatchCard } from "./match-cards/CompletedMatchCard";
-import { FutureMatchCard } from "./match-cards/FutureMatchCard";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
 interface ScheduleViewProps {
   matches: Match[];
@@ -38,11 +43,10 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
   const [courtConfigs, setCourtConfigs] = useState<CourtConfig[]>(
     gameConfig.courtConfigs || Array.from({ length: gameConfig.courts }, (_, i) => ({ courtNumber: i + 1, type: 'doubles' as const }))
   );
+  const [carouselApis, setCarouselApis] = useState<Map<number, CarouselApi>>(new Map());
   const [editingMatch, setEditingMatch] = useState<string | null>(null);
   const [editedTeams, setEditedTeams] = useState<{ team1: string[]; team2: string[] }>({ team1: [], team2: [] });
   const [matchStartTimes, setMatchStartTimes] = useState<Map<string, number>>(new Map());
-  const [expandedCourts, setExpandedCourts] = useState<Map<number, { completed: boolean; future: boolean }>>(new Map());
-  const carouselApiRef = useRef<any>(null);
 
   // Helper to normalize scores to numbers
   const normalizeScore = (score: { team1: number | string; team2: number | string } | undefined) => {
@@ -247,20 +251,19 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     // Check for player conflicts in current matches
     checkPlayerConflicts(newScores);
     
-    // Scroll to next unplayed match
-    setTimeout(() => {
-      if (carouselApiRef.current) {
-        const unplayedMatches = matches.filter(m => !newScores.has(m.id));
-        if (unplayedMatches.length > 0) {
-          const nextCourtNumber = unplayedMatches[0].court;
-          const courtsWithMatches = courtConfigs.filter(cc => matches.filter(m => m.court === cc.courtNumber).length > 0);
-          const slideIndex = courtsWithMatches.findIndex(cc => cc.courtNumber === nextCourtNumber);
-          if (slideIndex >= 0) {
-            carouselApiRef.current.scrollTo(slideIndex);
-          }
+    // Auto-scroll to next match on the same court
+    const match = matches.find(m => m.id === matchId);
+    if (match) {
+      setTimeout(() => {
+        const courtMatches = matches.filter(m => m.court === match.court);
+        const nextMatchIndex = courtMatches.findIndex(m => !newScores.has(m.id));
+        const api = carouselApis.get(match.court);
+        
+        if (api && nextMatchIndex >= 0) {
+          api.scrollTo(nextMatchIndex, true);
         }
-      }
-    }, 100);
+      }, 100);
+    }
     
     toast({ title: "Score confirmed" });
   };
@@ -622,14 +625,30 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     toast({ title: "Court type updated", description: `Court ${courtLetter} changed to ${typeText}, schedule regenerated` });
   };
 
-  const toggleCourtSection = (courtNumber: number, section: 'completed' | 'future') => {
-    setExpandedCourts(prev => {
-      const newMap = new Map(prev);
-      const current = newMap.get(courtNumber) || { completed: false, future: false };
-      newMap.set(courtNumber, { ...current, [section]: !current[section] });
-      return newMap;
-    });
+  const scrollToCurrentMatch = (courtNumber: number) => {
+    const api = carouselApis.get(courtNumber);
+    if (!api) return;
+
+    const courtMatches = matches.filter(m => m.court === courtNumber);
+    const currentMatchIndex = courtMatches.findIndex(m => !matchScores.has(m.id));
+    
+    if (currentMatchIndex >= 0) {
+      // Scroll to current match so it's prominently displayed with next match visible
+      api.scrollTo(currentMatchIndex, true);
+    }
   };
+
+  // Auto-scroll to current match when component is displayed, carousels are ready, or matches change
+  useEffect(() => {
+    if (carouselApis.size > 0) {
+      // Small delay to ensure carousel is fully rendered
+      setTimeout(() => {
+        courtConfigs.forEach(config => {
+          scrollToCurrentMatch(config.courtNumber);
+        });
+      }, 100);
+    }
+  }, [carouselApis.size, matches, matchScores]);
 
 // Conflict checks are performed after confirming a score to avoid render-loop adjustments
 // useEffect(() => {
@@ -637,9 +656,9 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
 // }, []);
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
+    <div className="pb-20 max-h-[calc(100vh-5rem)] overflow-y-auto">
       {/* Header */}
-      <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm pb-3 border-b">
+      <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-3 border-b mb-4">
         <div className="flex items-center gap-3 px-4 pt-4">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
             <Trophy className="w-5 h-5 text-primary-foreground" />
@@ -651,166 +670,316 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
         </div>
       </div>
 
-      {/* Carousel for Current/Next Matches */}
-      <div className="flex-shrink-0 px-2 sm:px-4 pt-4">
-        <Carousel
-          opts={{
-            align: "start",
-            loop: false,
-          }}
-          className="w-full"
-          setApi={(api) => { carouselApiRef.current = api; }}
-        >
-          <CarouselContent className="-ml-2 md:-ml-4">
-            {courtConfigs.filter(courtConfig => {
-              const courtMatches = matches.filter(m => m.court === courtConfig.courtNumber);
-              return courtMatches.length > 0;
-            }).map((courtConfig) => {
-              const courtMatches = matches.filter(m => m.court === courtConfig.courtNumber);
-              const currentMatchIndex = courtMatches.findIndex(m => !matchScores.has(m.id));
-              const currentMatch = currentMatchIndex >= 0 ? courtMatches[currentMatchIndex] : null;
-              const nextMatch = currentMatchIndex >= 0 && currentMatchIndex + 1 < courtMatches.length ? courtMatches[currentMatchIndex + 1] : null;
+      {/* Courts Grid - Responsive layout to fit both courts on screen */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2 sm:px-4">
+        {courtConfigs.map((courtConfig) => {
+          const courtMatches = matches.filter(m => m.court === courtConfig.courtNumber);
+          const currentMatchIndex = courtMatches.findIndex(m => !matchScores.has(m.id));
 
-              return (
-                <CarouselItem key={courtConfig.courtNumber} className={`pl-2 md:pl-4 ${gameConfig.courts === 1 ? 'basis-full' : 'basis-full md:basis-1/2'}`}>
-                  <div className="space-y-3">
-                    {/* Court Header */}
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge className="bg-primary/20 text-primary text-sm px-3 py-1">
-                        Court {String.fromCharCode(64 + courtConfig.courtNumber)}
-                      </Badge>
-                      
-                      {/* Singles/Doubles Toggle */}
-                      <div className="flex items-center gap-1.5 p-1.5 rounded-lg border bg-card text-xs">
-                        <span className={courtConfig.type === 'doubles' ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-                          Doubles
-                        </span>
-                        <Switch
-                          checked={courtConfig.type === 'singles'}
-                          onCheckedChange={() => toggleCourtType(courtConfig.courtNumber)}
-                          disabled={matchScores.size > 0}
-                          className="scale-75"
-                        />
-                        <span className={courtConfig.type === 'singles' ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-                          Singles
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Current Match */}
-                    {currentMatch && (
-                      <CurrentMatchCard
-                        match={currentMatch}
-                        matchNumber={`${String.fromCharCode(64 + courtConfig.courtNumber)}${currentMatchIndex + 1}`}
-                        scores={pendingScores.get(currentMatch.id) || matchScores.get(currentMatch.id) || { team1: '', team2: '' }}
-                        formattedTime={formattedTime}
-                        isEditing={editingMatch === currentMatch.id}
-                        editedTeams={editedTeams}
-                        allPlayers={allPlayers}
-                        onUpdateScore={(team, value) => updatePendingScore(currentMatch.id, team, value)}
-                        onConfirmScore={() => confirmScore(currentMatch.id)}
-                        onStartEdit={() => startEditingPlayers(currentMatch.id)}
-                        onUpdatePlayer={updateEditedPlayer}
-                        onSaveEdit={saveEditedPlayers}
-                        onCancelEdit={cancelEditingPlayers}
-                        compact={gameConfig.courts > 1}
-                      />
-                    )}
-
-                    {/* Up Next Match */}
-                    {nextMatch && (
-                      <UpNextMatchCard
-                        match={nextMatch}
-                        matchNumber={`${String.fromCharCode(64 + courtConfig.courtNumber)}${currentMatchIndex + 2}`}
-                        compact={gameConfig.courts > 1}
-                      />
-                    )}
-
-                    {!currentMatch && !nextMatch && (
-                      <div className="text-center py-4 text-sm text-muted-foreground border border-dashed rounded-lg">
-                        All matches completed! 🎉
-                      </div>
-                    )}
-                  </div>
-                </CarouselItem>
-              );
-            })}
-          </CarouselContent>
-          {gameConfig.courts > 1 && (
-            <>
-              <CarouselPrevious className="hidden md:flex" />
-              <CarouselNext className="hidden md:flex" />
-            </>
-          )}
-        </Carousel>
-      </div>
-
-      {/* Completed and Future Matches - Collapsible Sections */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-4 pt-4 pb-4">
-        <div className={`grid gap-4 ${gameConfig.courts === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-          {courtConfigs.filter(courtConfig => {
-            const courtMatches = matches.filter(m => m.court === courtConfig.courtNumber);
-            return courtMatches.length > 0;
-          }).map((courtConfig) => {
-            const courtMatches = matches.filter(m => m.court === courtConfig.courtNumber);
-            const currentMatchIndex = courtMatches.findIndex(m => !matchScores.has(m.id));
-            const completedMatches = courtMatches.filter((m, idx) => idx < currentMatchIndex);
-            const futureMatches = courtMatches.filter((m, idx) => idx > currentMatchIndex + 1);
-            const expanded = expandedCourts.get(courtConfig.courtNumber) || { completed: false, future: false };
-
-            return (
-              <div key={`history-${courtConfig.courtNumber}`} className="space-y-3">
-                <Badge variant="outline" className="text-xs">
-                  Court {String.fromCharCode(64 + courtConfig.courtNumber)} History
+          return (
+            <div key={courtConfig.courtNumber} className="space-y-2">
+              {/* Court Header */}
+              <div className="flex items-center justify-between gap-2">
+                <Badge className="bg-primary/20 text-primary text-sm px-2 py-1">
+                  Court {String.fromCharCode(64 + courtConfig.courtNumber)}
                 </Badge>
-
-                {/* Completed Matches */}
-                {completedMatches.length > 0 && (
-                  <Collapsible open={expanded.completed} onOpenChange={() => toggleCourtSection(courtConfig.courtNumber, 'completed')}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Completed ({completedMatches.length})
-                      </span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${expanded.completed ? 'rotate-180' : ''}`} />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-2 pt-2">
-                      {completedMatches.map((match, idx) => (
-                        <CompletedMatchCard
-                          key={match.id}
-                          match={match}
-                          matchNumber={`${String.fromCharCode(64 + courtConfig.courtNumber)}${idx + 1}`}
-                          scores={matchScores.get(match.id)!}
-                          onEditScore={() => editScore(match.id)}
-                        />
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-
-                {/* Future Matches */}
-                {futureMatches.length > 0 && (
-                  <Collapsible open={expanded.future} onOpenChange={() => toggleCourtSection(courtConfig.courtNumber, 'future')}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Upcoming ({futureMatches.length})
-                      </span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${expanded.future ? 'rotate-180' : ''}`} />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-2 pt-2">
-                      {futureMatches.map((match, idx) => (
-                        <FutureMatchCard
-                          key={match.id}
-                          match={match}
-                          matchNumber={`${String.fromCharCode(64 + courtConfig.courtNumber)}${currentMatchIndex + idx + 3}`}
-                        />
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
+                
+                <div className="flex items-center gap-2">
+                  {/* Singles/Doubles Toggle */}
+                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg border bg-card text-xs">
+                    <span className={courtConfig.type === 'doubles' ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                      Doubles
+                    </span>
+                    <Switch
+                      checked={courtConfig.type === 'singles'}
+                      onCheckedChange={() => toggleCourtType(courtConfig.courtNumber)}
+                      disabled={matchScores.size > 0}
+                      className="scale-75"
+                    />
+                    <span className={courtConfig.type === 'singles' ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                      Singles
+                    </span>
+                  </div>
+                  
+                  {/* Current Match Button */}
+                  {currentMatchIndex >= 0 && (
+                    <Button
+                      onClick={() => scrollToCurrentMatch(courtConfig.courtNumber)}
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 h-8 text-xs"
+                    >
+                      <Target className="w-3 h-3" />
+                      Current
+                    </Button>
+                  )}
+                </div>
               </div>
-            );
-          })}
-        </div>
+
+              {/* Carousel - Compact height for better fit */}
+              <Carousel
+                opts={{ align: "start", loop: false }}
+                className="w-full max-h-[calc(100vh-280px)]"
+                setApi={(api) => {
+                  if (api) {
+                    setCarouselApis(prev => new Map(prev).set(courtConfig.courtNumber, api));
+                  }
+                }}
+              >
+                <CarouselContent className="-ml-2">
+                  {courtMatches.map((match, idx) => {
+                    const isCurrentMatch = idx === currentMatchIndex;
+                    const isNextMatch = idx === currentMatchIndex + 1;
+                    const isPreviousMatch = idx < currentMatchIndex;
+                    const confirmedScores = matchScores.get(match.id);
+                    const pendingForMatch = pendingScores.get(match.id);
+                    const scores = pendingForMatch || confirmedScores || { team1: '', team2: '' };
+                    const isCompleted = matchScores.has(match.id);
+                    const hasPending = pendingScores.has(match.id);
+
+                    return (
+                      <CarouselItem key={match.id} className="pl-2 basis-[75%] sm:basis-[70%] lg:basis-1/3">
+                        <Card className={`p-3 transition-all ${
+                          isCurrentMatch 
+                            ? 'border-2 border-primary bg-primary/5 shadow-lg' 
+                            : isNextMatch 
+                            ? 'border border-accent bg-accent/5'
+                            : isPreviousMatch 
+                            ? 'bg-muted/40 opacity-60' 
+                            : 'bg-card opacity-80'
+                        }`}>
+                          <div className="space-y-2">
+                            {/* Match Status Header */}
+                            <div className="flex items-center justify-between">
+                              <Badge className={
+                                isCurrentMatch 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : isNextMatch
+                                  ? 'bg-accent text-accent-foreground'
+                                  : isPreviousMatch
+                                  ? 'bg-muted text-muted-foreground'
+                                  : 'bg-secondary text-secondary-foreground'
+                              }>
+                                {String.fromCharCode(64 + courtConfig.courtNumber)}{idx + 1} {isCurrentMatch ? '• Current' : isNextMatch ? '• Up Next' : isPreviousMatch ? '• Done' : ''}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {isCurrentMatch 
+                                  ? `Started ${match.clockStartTime || new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                                  : `Est. ${match.clockStartTime || new Date(Date.now() + match.startTime * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                                }
+                              </Badge>
+                            </div>
+
+                            {/* Stopwatch for Current Match */}
+                            {isCurrentMatch && (
+                              <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/20">
+                                <Timer className="w-4 h-4 text-primary animate-pulse" />
+                                <span className="text-lg font-bold text-primary">{formattedTime}</span>
+                                <span className="text-xs text-muted-foreground">elapsed</span>
+                              </div>
+                            )}
+
+                            {/* Team 1 */}
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <Users className="w-4 h-4 text-primary flex-shrink-0" />
+                                {editingMatch === match.id ? (
+                                  <div className="flex-1 min-w-0 space-y-1">
+                                    <Select
+                                      value={editedTeams.team1[0] || ""}
+                                      onValueChange={(v) => updateEditedPlayer('team1', 0, v)}
+                                    >
+                                      <SelectTrigger className="h-7 text-sm">
+                                        <SelectValue placeholder="Player 1" />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-50">
+                                        {allPlayers
+                                          .filter((p) => p !== editedTeams.team1[1])
+                                          .map((p) => (
+                                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                    </Select>
+                                    {!match.isSingles && (
+                                      <Select
+                                        value={editedTeams.team1[1] || ""}
+                                        onValueChange={(v) => updateEditedPlayer('team1', 1, v)}
+                                      >
+                                        <SelectTrigger className="h-7 text-sm">
+                                          <SelectValue placeholder="Player 2" />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-50">
+                                          {allPlayers
+                                            .filter((p) => p !== editedTeams.team1[0])
+                                            .map((p) => (
+                                              <SelectItem key={p} value={p}>{p}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="font-semibold text-sm min-w-0">
+                                    <div className="truncate">{match.team1[0]}</div>
+                                    {!match.isSingles && match.team1[1] && (
+                                      <div className="text-muted-foreground text-xs truncate">{match.team1[1]}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {isCurrentMatch ? (
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={scores.team1}
+                                  onChange={(e) => updatePendingScore(match.id, "team1", e.target.value)}
+                                  placeholder="0"
+                                  className="w-14 h-10 text-center text-xl font-bold flex-shrink-0"
+                                  disabled={isCompleted && !hasPending}
+                                />
+                              ) : confirmedScores ? (
+                                <div className="w-14 h-10 flex items-center justify-center text-xl font-bold">
+                                  {confirmedScores.team1}
+                                </div>
+                              ) : (
+                                <div className="w-14 h-10 flex items-center justify-center text-muted-foreground">
+                                  -
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="text-center text-xs font-bold text-muted-foreground">VS</div>
+
+                            {/* Team 2 */}
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <Users className="w-4 h-4 text-accent flex-shrink-0" />
+                                {editingMatch === match.id ? (
+                                  <div className="flex-1 min-w-0 space-y-1">
+                                    <Select
+                                      value={editedTeams.team2[0] || ""}
+                                      onValueChange={(v) => updateEditedPlayer('team2', 0, v)}
+                                    >
+                                      <SelectTrigger className="h-7 text-sm">
+                                        <SelectValue placeholder="Player 1" />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-50">
+                                        {allPlayers
+                                          .filter((p) => p !== editedTeams.team2[1])
+                                          .map((p) => (
+                                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                    </Select>
+                                    {!match.isSingles && (
+                                      <Select
+                                        value={editedTeams.team2[1] || ""}
+                                        onValueChange={(v) => updateEditedPlayer('team2', 1, v)}
+                                      >
+                                        <SelectTrigger className="h-7 text-sm">
+                                          <SelectValue placeholder="Player 2" />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-50">
+                                          {allPlayers
+                                            .filter((p) => p !== editedTeams.team2[0])
+                                            .map((p) => (
+                                              <SelectItem key={p} value={p}>{p}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="font-semibold text-sm min-w-0">
+                                    <div className="truncate">{match.team2[0]}</div>
+                                    {!match.isSingles && match.team2[1] && (
+                                      <div className="text-muted-foreground text-xs truncate">{match.team2[1]}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {isCurrentMatch ? (
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={scores.team2}
+                                  onChange={(e) => updatePendingScore(match.id, "team2", e.target.value)}
+                                  placeholder="0"
+                                  className="w-14 h-10 text-center text-xl font-bold flex-shrink-0"
+                                  disabled={isCompleted && !hasPending}
+                                />
+                              ) : confirmedScores ? (
+                                <div className="w-14 h-10 flex items-center justify-center text-xl font-bold">
+                                  {confirmedScores.team2}
+                                </div>
+                              ) : (
+                                <div className="w-14 h-10 flex items-center justify-center text-muted-foreground">
+                                  -
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Action Buttons for Current Match */}
+                            {isCurrentMatch && editingMatch === match.id && (
+                              <div className="flex gap-2">
+                                <Button 
+                                  onClick={saveEditedPlayers}
+                                  className="flex-1"
+                                >
+                                  Save Players
+                                </Button>
+                                <Button 
+                                  onClick={cancelEditingPlayers}
+                                  variant="outline"
+                                  className="flex-1"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            )}
+                            
+                            {isCurrentMatch && !editingMatch && (
+                              <>
+                                <Button 
+                                  onClick={() => startEditingPlayers(match.id)}
+                                  variant="outline"
+                                  className="w-full"
+                                >
+                                  Change Players
+                                </Button>
+                                {!isCompleted && (
+                                  <Button 
+                                    onClick={() => confirmScore(match.id)}
+                                    className="w-full"
+                                    disabled={!hasPending}
+                                  >
+                                    Confirm Score & Next
+                                  </Button>
+                                )}
+                                {isCompleted && !hasPending && (
+                                  <Button 
+                                    onClick={() => editScore(match.id)}
+                                    variant="outline"
+                                    className="w-full"
+                                  >
+                                    Edit Score
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </Card>
+                      </CarouselItem>
+                    );
+                  })}
+                </CarouselContent>
+                <CarouselPrevious className="-left-2 h-8 w-8" />
+                <CarouselNext className="-right-2 h-8 w-8" />
+              </Carousel>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
