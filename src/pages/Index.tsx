@@ -7,11 +7,16 @@ import { ScheduleView } from "@/components/ScheduleView";
 import { CheckInOut } from "@/components/CheckInOut";
 import { BottomNav } from "@/components/BottomNav";
 import { generateSchedule, Match } from "@/lib/scheduler";
-import { Trophy } from "lucide-react";
+import { Trophy, Users, UserCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MatchHistory } from "@/components/MatchHistory";
+import { usePlayerIdentity } from "@/hooks/use-player-identity";
+import { usePlayerMatches } from "@/hooks/use-player-matches";
+import { usePlayerNotifications } from "@/hooks/use-player-notifications";
+import { PlayerIdentitySelector } from "@/components/PlayerIdentitySelector";
+import { MyMatchesView } from "@/components/MyMatchesView";
 type Section = "setup" | "players" | "matches" | "history" | "leaderboard";
 const Index = () => {
   const [activeSection, setActiveSection] = useState<Section>("setup");
@@ -28,6 +33,25 @@ const Index = () => {
   }>>(new Map());
   const [userId, setUserId] = useState<string | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [showPlayerIdentitySelector, setShowPlayerIdentitySelector] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Player identity and view management
+  const { playerName, isPlayerView, claimIdentity, releaseIdentity } = usePlayerIdentity(gameId);
+  const playerMatches = usePlayerMatches(matches, playerName, matchScores);
+  
+  // Enable notifications when in player view
+  usePlayerNotifications(matches, playerName, gameId, matchScores);
+
+  // Update current time every second for player view
+  useEffect(() => {
+    if (isPlayerView) {
+      const interval = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isPlayerView]);
 
   // Ensure every match has a stable, unique id to prevent key collisions and score mismatches
   const sanitizeMatches = (arr: Match[]): Match[] => {
@@ -494,7 +518,87 @@ const Index = () => {
               </div>
             </div>}
           
-          {activeSection === "matches" && gameConfig && matches.length > 0 && <ScheduleView matches={matches} onBack={resetApp} gameConfig={gameConfig} allPlayers={players} onScheduleUpdate={handleScheduleUpdate} matchScores={matchScores} onMatchScoresUpdate={setMatchScores} onCourtConfigUpdate={handleCourtConfigUpdate} />}
+          {activeSection === "matches" && gameConfig && matches.length > 0 && (
+            <div className="flex flex-col h-full min-h-0">
+              {/* View Toggle Header */}
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  {isPlayerView && playerName ? (
+                    <>
+                      <UserCircle className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-medium">Playing as: <span className="text-primary font-bold">{playerName}</span></span>
+                    </>
+                  ) : (
+                    <>
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm font-medium text-muted-foreground">Organizer View</span>
+                    </>
+                  )}
+                </div>
+                <Button
+                  variant={isPlayerView ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => {
+                    if (isPlayerView) {
+                      releaseIdentity();
+                      toast.success("Switched to organizer view");
+                    } else {
+                      setShowPlayerIdentitySelector(true);
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  {isPlayerView ? (
+                    <>
+                      <Users className="h-4 w-4" />
+                      Organizer View
+                    </>
+                  ) : (
+                    <>
+                      <UserCircle className="h-4 w-4" />
+                      Player View
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Conditional View Rendering */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {isPlayerView && playerName ? (
+                  <MyMatchesView
+                    playerName={playerName}
+                    matchGroups={playerMatches}
+                    matchScores={matchScores}
+                    currentTime={currentTime}
+                  />
+                ) : (
+                  <ScheduleView
+                    matches={matches}
+                    onBack={resetApp}
+                    gameConfig={gameConfig}
+                    allPlayers={players}
+                    onScheduleUpdate={handleScheduleUpdate}
+                    matchScores={matchScores}
+                    onMatchScoresUpdate={setMatchScores}
+                    onCourtConfigUpdate={handleCourtConfigUpdate}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Player Identity Selector Dialog */}
+          {showPlayerIdentitySelector && (
+            <PlayerIdentitySelector
+              players={players}
+              onSelect={async (name) => {
+                await claimIdentity(name);
+                setShowPlayerIdentitySelector(false);
+                toast.success(`You're now playing as ${name}!`);
+              }}
+              onCancel={() => setShowPlayerIdentitySelector(false)}
+            />
+          )}
 
           {activeSection === "matches" && (!gameConfig || matches.length === 0) && <div className="text-center py-12">
               <p className="text-muted-foreground">Please complete game setup and add players first</p>

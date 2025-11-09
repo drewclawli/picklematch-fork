@@ -47,6 +47,53 @@ export type Database = {
         }
         Relationships: []
       }
+      player_devices: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          game_id: string
+          id: string
+          last_active: string | null
+          notification_preferences: Json | null
+          player_name: string
+          skip_next_match: boolean | null
+          status: Database["public"]["Enums"]["player_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          game_id: string
+          id?: string
+          last_active?: string | null
+          notification_preferences?: Json | null
+          player_name: string
+          skip_next_match?: boolean | null
+          status?: Database["public"]["Enums"]["player_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          game_id?: string
+          id?: string
+          last_active?: string | null
+          notification_preferences?: Json | null
+          player_name?: string
+          skip_next_match?: boolean | null
+          status?: Database["public"]["Enums"]["player_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_devices_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -55,7 +102,7 @@ export type Database = {
       generate_game_code: { Args: never; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      player_status: "active" | "sitting_out" | "left_game"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -182,6 +229,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      player_status: ["active", "sitting_out", "left_game"],
+    },
   },
 } as const
