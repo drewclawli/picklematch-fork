@@ -570,6 +570,7 @@ const Index = () => {
                     matchGroups={playerMatches}
                     matchScores={matchScores}
                     currentTime={currentTime}
+                    allMatches={matches}
                   />
                 ) : (
                   <ScheduleView

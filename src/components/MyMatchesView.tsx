@@ -12,6 +12,7 @@ interface MyMatchesViewProps {
   matchGroups: PlayerMatchGroups;
   matchScores: Map<string, { team1: number; team2: number }>;
   currentTime: Date;
+  allMatches: Match[];
 }
 
 export const MyMatchesView = ({
@@ -19,6 +20,7 @@ export const MyMatchesView = ({
   matchGroups,
   matchScores,
   currentTime,
+  allMatches,
 }: MyMatchesViewProps) => {
   const [showLater, setShowLater] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -29,6 +31,11 @@ export const MyMatchesView = ({
     const isWinner = score && 
       ((team1HasPlayer && score.team1 > score.team2) || 
        (!team1HasPlayer && score.team2 > score.team1));
+
+    // Court/match labeling to match schedule cards (A1, A2, B1...)
+    const courtLetter = String.fromCharCode(64 + (match.court || 1));
+    const perCourtIndex = allMatches.filter(m => m.court === match.court && m.endTime <= match.endTime).length;
+    const matchLabel = `${courtLetter}${perCourtIndex}`;
 
     // Calculate estimated start time for upcoming matches
     const getEstimatedTime = () => {
@@ -60,11 +67,11 @@ export const MyMatchesView = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Badge variant="outline" className="font-mono">
-                #{matchIndex + 1}
+                {matchLabel}
               </Badge>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="font-semibold">Court {match.court}</span>
+                <span className="font-semibold">Court {courtLetter}</span>
               </div>
             </div>
             {status === "current" && (

@@ -31,10 +31,13 @@ export const usePlayerIdentity = (gameId: string | null) => {
   const claimIdentity = async (name: string) => {
     if (!gameId) return;
     
-    await setPlayerIdentity(gameId, name);
+    // Optimistically set local state so UI switches immediately
     setPlayerName(name);
+    // Persist in background (localStorage is written inside setPlayerIdentity)
+    setPlayerIdentity(gameId, name).catch((err) => {
+      console.error("Failed to persist player identity:", err);
+    });
   };
-
   const releaseIdentity = async () => {
     if (!gameId) return;
     
