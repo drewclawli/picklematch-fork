@@ -680,11 +680,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
             <div key={courtConfig.courtNumber} className="space-y-2">
               {/* Court Header */}
               <div className="flex items-center justify-between gap-2">
-                <Badge className={`text-sm px-2 py-1 ${
-                  courtConfig.courtNumber === 1 
-                    ? 'bg-court-a/20 text-court-a' 
-                    : 'bg-court-b/20 text-court-b'
-                }`}>
+                <Badge className="bg-primary/20 text-primary text-sm px-2 py-1">
                   Court {String.fromCharCode(64 + courtConfig.courtNumber)}
                 </Badge>
                 
@@ -741,19 +737,13 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                     const isCompleted = matchScores.has(match.id);
                     const hasPending = pendingScores.has(match.id);
 
-                    const courtColor = courtConfig.courtNumber === 1 ? 'court-a' : 'court-b';
-                    
                     return (
                       <CarouselItem key={match.id} className="pl-2 basis-[80%] sm:basis-[75%] md:basis-[80%]">
                         <Card className={`p-2 transition-all max-w-full ${
                           isCurrentMatch 
-                            ? courtConfig.courtNumber === 1
-                              ? 'border-2 border-court-a bg-court-a-light shadow-lg' 
-                              : 'border-2 border-court-b bg-court-b-light shadow-lg'
+                            ? 'border-2 border-primary bg-primary/5 shadow-lg' 
                             : isNextMatch 
-                            ? courtConfig.courtNumber === 1
-                              ? 'border border-court-a/40 bg-court-a-light/50'
-                              : 'border border-court-b/40 bg-court-b-light/50'
+                            ? 'border border-accent bg-accent/5'
                             : isPreviousMatch 
                             ? 'bg-muted/40 opacity-60' 
                             : 'bg-card opacity-80'
@@ -763,13 +753,9 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                             <div className="flex items-center justify-between">
                               <Badge className={`text-xs py-0 ${
                                 isCurrentMatch 
-                                  ? courtConfig.courtNumber === 1
-                                    ? 'bg-court-a text-court-a-foreground'
-                                    : 'bg-court-b text-court-b-foreground'
+                                  ? 'bg-primary text-primary-foreground' 
                                   : isNextMatch
-                                  ? courtConfig.courtNumber === 1
-                                    ? 'bg-court-a/50 text-court-a'
-                                    : 'bg-court-b/50 text-court-b'
+                                  ? 'bg-accent text-accent-foreground'
                                   : isPreviousMatch
                                   ? 'bg-muted text-muted-foreground'
                                   : 'bg-secondary text-secondary-foreground'
