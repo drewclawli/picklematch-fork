@@ -225,7 +225,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
     // Update ALL matches to include ALL scores (both new and existing)
     const updatedMatches = matches.map(m => {
       if (m.id === matchId) {
-        return { ...m, score: { team1: team1Score, team2: team2Score } };
+        return { ...m, score: { team1: team1Score, team2: team2Score }, clockStartTime: formattedTime };
       }
       // Preserve existing scores using the latest scores map
       const existingScore = newScores.get(m.id);
