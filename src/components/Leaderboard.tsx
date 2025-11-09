@@ -114,6 +114,23 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
               }`}
             >
               <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-sm text-foreground">{stat.player}</span>
+                      {index === 0 && stat.matchesPlayed > 0 && (
+                        <Trophy className="w-3 h-3 text-accent" />
+                      )}
+                    </div>
+                    <div className="text-[9px] text-muted-foreground">
+                      {stat.matchesPlayed} match{stat.matchesPlayed !== 1 ? 'es' : ''}
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex items-center gap-3">
                   <div className="text-center">
                     <div className="text-sm font-extrabold text-accent">{(stat.winRate * 100).toFixed(0)}%</div>
@@ -134,22 +151,6 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
                       {stat.differentialPerGame >= 0 ? '+' : ''}{stat.differentialPerGame.toFixed(1)}
                     </div>
                     <div className="text-[9px] text-muted-foreground">D/G</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-1 justify-end">
-                  <div className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span className="font-semibold text-sm text-foreground">{stat.player}</span>
-                      {index === 0 && stat.matchesPlayed > 0 && (
-                        <Trophy className="w-3 h-3 text-accent" />
-                      )}
-                    </div>
-                    <div className="text-[9px] text-muted-foreground">
-                      {stat.matchesPlayed} match{stat.matchesPlayed !== 1 ? 'es' : ''}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs">
-                    {index + 1}
                   </div>
                 </div>
               </div>
