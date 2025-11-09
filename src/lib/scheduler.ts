@@ -178,16 +178,22 @@ function generateCompleteSchedule(
       
       // Get deterministic player selection from rotation queue
       const playersNeeded = courtConfig.type === 'singles' ? 2 : 4;
-      let candidatePlayers = rotationQueue.getNextPlayers(playersNeeded * 3, excludedPlayers);
-      
+      // Use a larger pool to allow pairing bound teammates
+      let pool = rotationQueue.getNextPlayers(20, excludedPlayers);
+
       // Further filter by lookahead conflicts
-      candidatePlayers = candidatePlayers.filter(p => 
+      pool = pool.filter(p =>
         !wouldCreateFutureConflict(p, slot, courtConfig.courtNumber, schedule, gameDuration, 3)
       );
+
+      // Select players, prioritizing complete teammate pairs when possible
+      const selectedPlayers = courtConfig.type === 'doubles'
+        ? selectPlayersWithPairs(pool, teammatePairs, playersNeeded)
+        : pool.slice(0, playersNeeded);
       
-      if (candidatePlayers.length >= playersNeeded) {
+      if (selectedPlayers.length >= playersNeeded) {
         const match = createDeterministicMatch(
-          candidatePlayers.slice(0, playersNeeded),
+          selectedPlayers,
           playerStats,
           slotStartTime,
           slotEndTime,
@@ -445,6 +451,72 @@ function generateTeamConfigurations(
   }
   
   return configs;
+}
+
+function selectPlayersWithPairs(pool: string[], teammatePairs: TeammatePair[], playersNeeded: number): string[] {
+  // Only meaningful for doubles (4 players)
+  if (playersNeeded !== 4) return pool.slice(0, playersNeeded);
+
+  // Build partner lookup
+  const partnerMap = new Map<string, string>();
+  teammatePairs.forEach(({ player1, player2 }) => {
+    partnerMap.set(player1, player2);
+    partnerMap.set(player2, player1);
+  });
+
+  const inPool = new Set(pool);
+
+  // Find complete pairs present in the pool and rank them by queue proximity (index sum)
+  const pairsInPool: Array<{ a: string; b: string; priority: number }> = [];
+  pool.forEach((p, idx) => {
+    const partner = partnerMap.get(p);
+    if (!partner) return;
+    const jdx = pool.indexOf(partner);
+    if (jdx === -1) return;
+    // Avoid duplicates: only record when idx < jdx
+    if (idx < jdx) {
+      pairsInPool.push({ a: p, b: partner, priority: idx + jdx });
+    }
+  });
+
+  pairsInPool.sort((x, y) => x.priority - y.priority);
+
+  const selected = new Set<string>();
+  const result: string[] = [];
+
+  // Try to select two full pairs first
+  for (const { a, b } of pairsInPool) {
+    if (result.length >= 4) break;
+    if (!selected.has(a) && !selected.has(b)) {
+      result.push(a, b);
+      selected.add(a);
+      selected.add(b);
+    }
+  }
+
+  // If still short, fill from pool. Prefer pulling a partner with the player if room allows
+  for (const p of pool) {
+    if (result.length >= 4) break;
+    if (selected.has(p)) continue;
+
+    const partner = partnerMap.get(p);
+    if (
+      partner &&
+      inPool.has(partner) &&
+      !selected.has(partner) &&
+      result.length <= 2 // room for a pair
+    ) {
+      result.push(p, partner);
+      selected.add(p);
+      selected.add(partner);
+      continue;
+    }
+
+    result.push(p);
+    selected.add(p);
+  }
+
+  return result.slice(0, 4);
 }
 
 function evaluateMatchDeterministic(
