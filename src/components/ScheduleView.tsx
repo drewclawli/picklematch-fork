@@ -658,14 +658,14 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
   return (
     <div className="pb-20 max-h-[calc(100vh-3rem)] overflow-y-auto">
       {/* Header */}
-      <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-1 border-b mb-2">
-        <div className="flex items-center gap-1.5 px-2 pt-1">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-            <Trophy className="w-3 h-3 text-primary-foreground" />
+      <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-2 border-b mb-3">
+        <div className="flex items-center gap-2 px-2 pt-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+            <Trophy className="w-4 h-4 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="text-sm sm:text-base font-bold text-foreground">Match Schedule</h2>
-            <p className="text-[9px] sm:text-[10px] text-muted-foreground">{matches.length} matches • {allPlayers.length} players</p>
+            <h2 className="text-base sm:text-lg font-bold text-foreground">Match Schedule</h2>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{matches.length} matches • {allPlayers.length} players</p>
           </div>
         </div>
       </div>
@@ -680,7 +680,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
             <div key={courtConfig.courtNumber} className="space-y-2">
               {/* Court Header */}
               <div className="flex items-center justify-between gap-2">
-                <Badge className={courtConfig.courtNumber === 1 ? "bg-court-a/20 text-court-a text-sm px-2 py-1" : "bg-court-b/20 text-court-b text-sm px-2 py-1"}>
+                <Badge className="bg-primary/20 text-primary text-sm px-2 py-1">
                   Court {String.fromCharCode(64 + courtConfig.courtNumber)}
                 </Badge>
                 
@@ -741,13 +741,9 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                       <CarouselItem key={match.id} className="pl-2 basis-[80%] sm:basis-[75%] md:basis-[80%]">
                         <Card className={`p-2 transition-all max-w-full ${
                           isCurrentMatch 
-                            ? courtConfig.courtNumber === 1 
-                              ? 'border-2 border-court-a bg-court-a/5 shadow-lg' 
-                              : 'border-2 border-court-b bg-court-b/5 shadow-lg'
+                            ? 'border-2 border-primary bg-primary/5 shadow-lg' 
                             : isNextMatch 
-                            ? courtConfig.courtNumber === 1
-                              ? 'border border-court-a bg-court-a/5'
-                              : 'border border-court-b bg-court-b/5'
+                            ? 'border border-accent bg-accent/5'
                             : isPreviousMatch 
                             ? 'bg-muted/40 opacity-60' 
                             : 'bg-card opacity-80'
@@ -757,13 +753,9 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                             <div className="flex items-center justify-between">
                               <Badge className={`text-xs py-0 ${
                                 isCurrentMatch 
-                                  ? courtConfig.courtNumber === 1 
-                                    ? 'bg-court-a text-white'
-                                    : 'bg-court-b text-white'
+                                  ? 'bg-primary text-primary-foreground' 
                                   : isNextMatch
-                                  ? courtConfig.courtNumber === 1
-                                    ? 'bg-court-a/70 text-white'
-                                    : 'bg-court-b/70 text-white'
+                                  ? 'bg-accent text-accent-foreground'
                                   : isPreviousMatch
                                   ? 'bg-muted text-muted-foreground'
                                   : 'bg-secondary text-secondary-foreground'

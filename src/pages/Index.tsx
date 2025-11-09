@@ -449,16 +449,16 @@ const Index = () => {
       </div>
       
       <div className="max-w-5xl mx-auto p-2 sm:p-4 relative z-10">
-        <header className="text-center mb-2">
-          <div className="flex items-center justify-center gap-1.5 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-sport">
-              <Trophy className="w-4 h-4 text-white drop-shadow-lg" />
+        <header className="text-center mb-4 sm:mb-6">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-sport">
+              <Trophy className="w-6 h-6 text-white drop-shadow-lg" />
             </div>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold mb-0.5 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient_6s_linear_infinite]">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient_6s_linear_infinite]">
             TeamUp! Social Play
           </h1>
-          <p className="text-muted-foreground text-xs sm:text-sm font-medium">
+          <p className="text-muted-foreground text-sm sm:text-base font-medium">
             🎾 Smart team assignment & scoring 🏓
           </p>
         </header>

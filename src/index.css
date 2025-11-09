@@ -43,10 +43,6 @@ All colors MUST be HSL.
     --success: 142 76% 36%;
     --warning: 45 93% 47%;
     
-    /* Court colors for differentiation */
-    --court-a: 142 76% 36%;  /* Green for Court A */
-    --court-b: 195 92% 48%;  /* Blue for Court B */
-    
     /* Sport-themed gradients */
     --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(195 92% 48%));
     --gradient-court: linear-gradient(135deg, hsl(142 76% 46%), hsl(142 76% 36%));
@@ -112,10 +108,6 @@ All colors MUST be HSL.
     
     --success: 142 76% 46%;
     --warning: 45 93% 57%;
-    
-    /* Court colors for differentiation */
-    --court-a: 142 76% 46%;  /* Bright green for Court A dark mode */
-    --court-b: 195 92% 58%;  /* Bright blue for Court B dark mode */
     
     /* Sport-themed gradients dark */
     --gradient-primary: linear-gradient(135deg, hsl(142 76% 46%), hsl(195 92% 58%));
