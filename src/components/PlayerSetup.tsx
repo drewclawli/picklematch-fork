@@ -136,7 +136,7 @@ export const PlayerSetup = ({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pb-safe mt-4">
+      <div className="flex-1 min-h-0 overflow-y-auto pb-24 pb-safe mt-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {players.map((player, index) => {
             const partner = getPairPartner(player);
@@ -176,14 +176,16 @@ export const PlayerSetup = ({
 
         {teammatePairs.length > 0 && <div className="pt-4 border-t space-y-2 mt-4">
             <h4 className="text-sm font-semibold text-foreground">Teammate Pairs</h4>
-            {teammatePairs.map((pair, idx) => <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-accent/10 border border-accent/20">
-                <span className="text-sm font-medium">
-                  {pair.player1} & {pair.player2}
-                </span>
-                <Button variant="ghost" size="sm" onClick={() => removePair(pair)} className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive">
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>)}
+            <div className="max-h-48 overflow-y-auto pr-1">
+              {teammatePairs.map((pair, idx) => <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-accent/10 border border-accent/20">
+                  <span className="text-sm font-medium">
+                    {pair.player1} & {pair.player2}
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => removePair(pair)} className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>)}
+            </div>
           </div>}
       </div>
     </div>;
