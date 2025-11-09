@@ -42,20 +42,25 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
 
   const handleCourtsChange = (newCourts: number) => {
     setCourts(newCourts);
-    setCourtConfigs(Array.from({ length: newCourts }, (_, i) => 
+    const newConfigs = Array.from({ length: newCourts }, (_, i) => 
       courtConfigs[i] || { courtNumber: i + 1, type: 'doubles' as const }
-    ));
+    );
+    setCourtConfigs(newConfigs);
+    onComplete({ gameDuration, totalTime, courts: newCourts, courtConfigs: newConfigs });
   };
 
   const toggleCourtType = (courtNumber: number) => {
-    setCourtConfigs(prev => prev.map(config => 
+    const newConfigs = courtConfigs.map(config => 
       config.courtNumber === courtNumber 
-        ? { ...config, type: config.type === 'singles' ? 'doubles' : 'singles' }
+        ? { ...config, type: config.type === 'singles' ? 'doubles' as const : 'singles' as const }
         : config
-    ));
+    );
+    setCourtConfigs(newConfigs);
+    onComplete({ gameDuration, totalTime, courts, courtConfigs: newConfigs });
   };
 
-  const handleSubmit = () => {
+  // Update parent state whenever settings change
+  const updateConfig = () => {
     onComplete({ gameDuration, totalTime, courts, courtConfigs });
   };
 
@@ -90,172 +95,148 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-accent/80 flex items-center justify-center">
-          <Trophy className="w-4 h-4 text-accent-foreground" />
-        </div>
-        <div>
-          <h2 className="text-base font-bold text-foreground">Game Settings</h2>
-          <p className="text-muted-foreground text-xs">Configure your session</p>
-        </div>
-      </div>
+    <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pb-2">
 
-      {/* Game Code and QR Code Section */}
+      {/* Game Code and QR Code Section - Compact */}
       {gameCode && (
-        <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="flex flex-col items-center gap-2">
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground mb-0.5">Game Code</p>
-              <p className="text-xl font-bold font-mono tracking-wider text-primary">{gameCode}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Share this code with other players</p>
+        <Card className="p-2 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1">
+              <p className="text-[9px] text-muted-foreground">Code</p>
+              <p className="text-base font-bold font-mono text-primary">{gameCode}</p>
             </div>
-
-            <div className="bg-white p-2 rounded-lg shadow-inner">
+            <div className="bg-white p-1.5 rounded shadow-inner">
               <QRCodeSVG
                 value={gameUrl}
-                size={120}
+                size={60}
                 level="H"
-                includeMargin={true}
+                includeMargin={false}
               />
             </div>
-
-            <div className="flex gap-1.5">
+            <div className="flex flex-col gap-1">
               <Button
                 onClick={handleShare}
                 variant="outline"
                 size="sm"
-                className="gap-1 h-7 text-xs px-2"
+                className="h-6 text-[9px] px-1.5"
               >
-                <Share2 className="w-3 h-3" />
-                Share
+                <Share2 className="w-2.5 h-2.5" />
               </Button>
               <Button
                 onClick={handleCopy}
                 variant="outline"
                 size="sm"
-                className="gap-1 h-7 text-xs px-2"
+                className="h-6 text-[9px] px-1.5"
               >
-                {copied ? (
-                  <>
-                    <Check className="w-3 h-3" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    Copy
-                  </>
-                )}
+                {copied ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
               </Button>
             </div>
           </div>
         </Card>
       )}
 
-      <div className="space-y-3">
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold flex items-center gap-1.5">
-            <Clock className="w-3 h-3" />
-            Game Duration
+      {/* Compact Grid Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* Game Duration */}
+        <div className="space-y-1">
+          <Label className="text-xs font-semibold flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5" />
+            Duration
           </Label>
-          <RadioGroup value={gameDuration.toString()} onValueChange={(v) => setGameDuration(Number(v))}>
-            <div className="grid grid-cols-3 gap-2">
+          <RadioGroup value={gameDuration.toString()} onValueChange={(v) => {
+            const newDuration = Number(v);
+            setGameDuration(newDuration);
+            onComplete({ gameDuration: newDuration, totalTime, courts, courtConfigs });
+          }}>
+            <div className="grid grid-cols-3 gap-1">
               {[5, 10, 15].map((duration) => (
                 <label
                   key={duration}
-                  className={`relative flex items-center justify-center p-2 rounded-lg border-2 cursor-pointer transition-all ${
+                  className={`relative flex items-center justify-center p-1.5 rounded border-2 cursor-pointer transition-all ${
                     gameDuration === duration
-                      ? "border-primary bg-primary/5 shadow-md"
-                      : "border-border hover:border-primary/50"
+                      ? "border-primary bg-primary/5"
+                      : "border-border"
                   }`}
                 >
                   <RadioGroupItem value={duration.toString()} className="sr-only" />
-                  <span className="text-sm font-bold">{duration} min</span>
+                  <span className="text-xs font-bold">{duration}m</span>
                 </label>
               ))}
             </div>
           </RadioGroup>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="total-time" className="text-sm font-semibold">
-            Total Play Time
+        {/* Total Play Time */}
+        <div className="space-y-1">
+          <Label htmlFor="total-time" className="text-xs font-semibold">
+            Total Time
           </Label>
-          <Select value={totalTime.toString()} onValueChange={(v) => setTotalTime(Number(v))}>
-            <SelectTrigger id="total-time" className="h-9 text-sm">
+          <Select value={totalTime.toString()} onValueChange={(v) => {
+            const newTime = Number(v);
+            setTotalTime(newTime);
+            onComplete({ gameDuration, totalTime: newTime, courts, courtConfigs });
+          }}>
+            <SelectTrigger id="total-time" className="h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {totalTimeOptions.map((time) => (
-                <SelectItem key={time} value={time.toString()}>
-                  {time} minutes
+                <SelectItem key={time} value={time.toString()} className="text-xs">
+                  {time} min
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="courts" className="text-sm font-semibold">
-            Number of Courts
+        {/* Number of Courts */}
+        <div className="space-y-1">
+          <Label htmlFor="courts" className="text-xs font-semibold">
+            Courts
           </Label>
           <Select value={courts.toString()} onValueChange={(v) => handleCourtsChange(Number(v))}>
-            <SelectTrigger id="courts" className="h-9 text-sm">
+            <SelectTrigger id="courts" className="h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {Array.from({ length: Math.min(maxCourts, 10) }, (_, i) => i + 1).map((num) => (
-                <SelectItem key={num} value={num.toString()}>
+                <SelectItem key={num} value={num.toString()} className="text-xs">
                   {num} {num === 1 ? "court" : "courts"}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[10px] text-muted-foreground">
-            Maximum {maxCourts} courts for {playerCount} players
-          </p>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">
-            Court Configuration
+        {/* Court Configuration */}
+        <div className="space-y-1 sm:col-span-2">
+          <Label className="text-xs font-semibold">
+            Court Type
           </Label>
-          <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-1">
             {courtConfigs.map((config) => (
-              <div key={config.courtNumber} className="flex items-center justify-between p-2 rounded-lg border bg-card">
-                <Label htmlFor={`court-${config.courtNumber}`} className="text-xs font-medium">
+              <div key={config.courtNumber} className="flex items-center justify-between p-1.5 rounded border bg-card">
+                <Label htmlFor={`court-${config.courtNumber}`} className="text-[10px] font-medium">
                   Court {config.courtNumber}
                 </Label>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs ${config.type === 'singles' ? 'text-muted-foreground' : 'text-foreground font-medium'}`}>
-                    Doubles
+                <div className="flex items-center gap-1">
+                  <span className={`text-[9px] ${config.type === 'singles' ? 'text-muted-foreground' : 'text-foreground'}`}>
+                    2v2
                   </span>
                   <Switch
                     id={`court-${config.courtNumber}`}
                     checked={config.type === 'singles'}
                     onCheckedChange={() => toggleCourtType(config.courtNumber)}
-                    className="scale-75"
+                    className="scale-[0.65]"
                   />
-                  <span className={`text-xs ${config.type === 'singles' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                    Singles
+                  <span className={`text-[9px] ${config.type === 'singles' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    1v1
                   </span>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="flex gap-2">
-        {onBack && (
-          <Button variant="outline" onClick={onBack} size="sm" className="flex-1 h-9 text-sm">
-            Back
-          </Button>
-        )}
-        <Button onClick={handleSubmit} size="sm" className={`h-9 text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-sport hover:shadow-glow hover:scale-105 transition-all ${onBack ? 'flex-1' : 'w-full'}`}>
-          Continue
-        </Button>
       </div>
     </div>
   );

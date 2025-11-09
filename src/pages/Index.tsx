@@ -465,25 +465,33 @@ const Index = () => {
 
         <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
 
-        <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 overflow-y-auto mb-12">
-          {activeSection === "setup" && <div className="space-y-3">
-              <div className="text-center mb-3">
-                <h2 className="text-lg font-bold text-foreground mb-1">Game Setup</h2>
-                <p className="text-xs text-muted-foreground">Configure your game settings</p>
-                {gameId && (
-                  <div className="mt-2">
-                    <Button 
-                      onClick={startNewSession} 
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                    >
-                      Start New Session
-                    </Button>
-                  </div>
-                )}
+        <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col mb-12 overflow-hidden">
+          {activeSection === "setup" && <div className="flex flex-col h-full">
+              {gameId && (
+                <div className="flex justify-end mb-2">
+                  <Button 
+                    onClick={startNewSession} 
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 h-7 text-xs"
+                  >
+                    New Session
+                  </Button>
+                </div>
+              )}
+              <div className="flex-1 overflow-y-auto">
+                <GameSetup onComplete={handleGameConfigComplete} gameCode={gameCode} />
               </div>
-              <GameSetup onComplete={handleGameConfigComplete} gameCode={gameCode} />
+              <div className="pt-2 border-t mt-2 flex-shrink-0">
+                <Button 
+                  onClick={handleGameConfigComplete.bind(null, gameConfig || { gameDuration: 10, totalTime: 60, courts: 2 })} 
+                  size="sm" 
+                  className="w-full h-9 text-sm font-semibold bg-gradient-to-r from-primary to-accent text-white shadow-sport"
+                  disabled={!gameConfig}
+                >
+                  Continue
+                </Button>
+              </div>
             </div>}
           
           {activeSection === "matches" && gameConfig && matches.length > 0 && <ScheduleView matches={matches} onBack={resetApp} gameConfig={gameConfig} allPlayers={players} onScheduleUpdate={handleScheduleUpdate} matchScores={matchScores} onMatchScoresUpdate={setMatchScores} onCourtConfigUpdate={handleCourtConfigUpdate} />}
