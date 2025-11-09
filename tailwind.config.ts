@@ -58,6 +58,9 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         greenery: "hsl(var(--greenery))",
+        "pantone-493c": "hsl(var(--pantone-493c))",
+        "gray-mist": "hsl(var(--gray-mist))",
+        larkspur: "hsl(var(--larkspur))",
       },
       borderRadius: {
         lg: "var(--radius)",

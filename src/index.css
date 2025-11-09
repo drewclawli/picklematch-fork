@@ -43,6 +43,9 @@ All colors MUST be HSL.
     --success: 142 76% 36%;
     --warning: 45 93% 47%;
     --greenery: 88 40% 49%; /* Pantone Greenery */
+    --pantone-493c: 340 70% 50%; /* Pantone 493C */
+    --gray-mist: 210 10% 85%; /* Gray Mist */
+    --larkspur: 265 50% 60%; /* Larkspur */
     
     /* Sport-themed gradients */
     --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(195 92% 48%));
@@ -110,6 +113,9 @@ All colors MUST be HSL.
     --success: 142 76% 46%;
     --warning: 45 93% 57%;
     --greenery: 88 40% 49%; /* Pantone Greenery */
+    --pantone-493c: 340 70% 50%; /* Pantone 493C */
+    --gray-mist: 210 10% 85%; /* Gray Mist */
+    --larkspur: 265 50% 60%; /* Larkspur */
     
     /* Sport-themed gradients dark */
     --gradient-primary: linear-gradient(135deg, hsl(142 76% 46%), hsl(195 92% 58%));

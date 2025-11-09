@@ -679,12 +679,16 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
           return (
             <div key={courtConfig.courtNumber} className="space-y-2">
               {/* Court Header - Compact */}
-              <div className="flex items-center justify-between gap-2 bg-[hsl(var(--greenery))] rounded-lg p-2 border border-primary/20">
+              <div className={`flex items-center justify-between gap-2 rounded-lg p-2 border ${
+                courtConfig.courtNumber === 1 
+                  ? 'bg-greenery border-greenery/30' 
+                  : 'bg-pantone-493c border-pantone-493c/30'
+              }`}>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-primary/20 text-primary text-xs px-1.5 py-0.5">
+                  <Badge className="bg-white/90 text-gray-800 text-xs px-1.5 py-0.5 font-semibold">
                     Court {String.fromCharCode(64 + courtConfig.courtNumber)}
                   </Badge>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] text-white/90 font-medium">
                     {currentMatchIndex >= 0 
                       ? `${currentMatchIndex + 1}/${courtMatches.length}`
                       : `${courtMatches.length} matches`
@@ -694,8 +698,8 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                 
                 <div className="flex items-center gap-2">
                   {/* Singles/Doubles Toggle */}
-                  <div className="flex items-center gap-1 p-1 rounded-lg border bg-card text-[10px]">
-                    <span className={courtConfig.type === 'doubles' ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  <div className="flex items-center gap-1 p-1 rounded-lg border border-white/20 bg-white/90 text-[10px]">
+                    <span className={courtConfig.type === 'doubles' ? 'text-gray-800 font-medium' : 'text-gray-500'}>
                       Doubles
                     </span>
                     <Switch
@@ -704,7 +708,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                       disabled={matchScores.size > 0}
                       className="scale-75"
                     />
-                    <span className={courtConfig.type === 'singles' ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                    <span className={courtConfig.type === 'singles' ? 'text-gray-800 font-medium' : 'text-gray-500'}>
                       Singles
                     </span>
                   </div>
@@ -715,7 +719,7 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                       onClick={() => scrollToCurrentMatch(courtConfig.courtNumber)}
                       variant="outline"
                       size="sm"
-                      className="gap-1 h-6 text-[10px] px-2"
+                      className="gap-1 h-6 text-[10px] px-2 bg-white/90 text-gray-800 border-white/30 hover:bg-white"
                     >
                       <Target className="w-2.5 h-2.5" />
                       Current
@@ -749,9 +753,13 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
                       <CarouselItem key={match.id} className="pl-2 basis-[80%] sm:basis-[60%] md:basis-[45%] lg:basis-[35%]">
                         <Card className={`p-1.5 transition-all max-w-full md:aspect-[5/3] md:max-h-[220px] ${
                           isCurrentMatch 
-                            ? 'border-2 border-primary bg-primary/5 shadow-lg' 
+                            ? courtConfig.courtNumber === 1
+                              ? 'border-2 border-greenery bg-greenery/20 shadow-lg'
+                              : 'border-2 border-pantone-493c bg-pantone-493c/20 shadow-lg'
                             : isNextMatch 
-                            ? 'border border-accent bg-accent/5'
+                            ? courtConfig.courtNumber === 1
+                              ? 'border border-gray-mist/50 bg-gray-mist/30'
+                              : 'border border-larkspur/50 bg-larkspur/20'
                             : isPreviousMatch 
                             ? 'bg-muted/40 opacity-60' 
                             : 'bg-card opacity-80'
