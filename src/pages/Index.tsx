@@ -480,34 +480,7 @@ const Index = () => {
           
           {activeSection === "matches" && gameConfig && matches.length > 0 && <div className="flex flex-col h-full min-h-0">
               {/* Header with View Toggle */}
-              <div className="flex items-center justify-between mb-4 sm:mb-6 flex-shrink-0">
-                <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-                  {isPlayerView ? "My Matches" : "Match Schedule"}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
-                    {isPlayerView ? "Player View" : "Organizer View"}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={() => {
-              if (isPlayerView) {
-                releaseIdentity();
-                toast.success("Switched to organizer view");
-              } else {
-                setShowPlayerIdentitySelector(true);
-              }
-            }} className="gap-1.5 sm:gap-2 h-8 sm:h-9 text-xs sm:text-sm">
-                  {isPlayerView ? <>
-                      <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">Organizer View</span>
-                      <span className="sm:hidden">Organizer</span>
-                    </> : <>
-                      <UserCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">Player View</span>
-                      <span className="sm:hidden">Player</span>
-                    </>}
-                </Button>
-                </div>
-              </div>
+              
 
               {/* Conditional View Rendering */}
               <div className="flex-1 min-h-0 overflow-y-auto">
