@@ -74,7 +74,6 @@ export const ScheduleView = ({
     startTime: number;
     matchId: string;
   }>>(new Map());
-  const [currentView, setCurrentView] = useState<'organizer' | 'player'>('organizer');
 
   // Helper to normalize scores to numbers
   const normalizeScore = (score: {
@@ -721,16 +720,6 @@ export const ScheduleView = ({
             <h2 className="text-base font-bold text-foreground">Match Schedule</h2>
             <p className="text-[10px] text-muted-foreground">{matches.length} matches • {allPlayers.length} players</p>
           </div>
-        </div>
-        <div className="px-2 pt-2">
-          <Button
-            variant={currentView === 'organizer' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setCurrentView(currentView === 'organizer' ? 'player' : 'organizer')}
-            className="text-xs h-7"
-          >
-            {currentView === 'organizer' ? 'Organizer View' : 'Player View'}
-          </Button>
         </div>
       </div>
 
