@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Timer, UserCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Timer, UserCircle, Brackets } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { validateMatchScore } from "@/lib/validation";
 import { useStopwatch } from "@/hooks/use-stopwatch";
@@ -207,6 +208,16 @@ export const ScheduleView = ({
     setPendingScores(newPending);
   };
   const startEditingPlayers = (matchId: string) => {
+    // Don't allow editing players in tournament mode
+    if (gameConfig.schedulingType && gameConfig.schedulingType !== 'round-robin') {
+      toast({
+        title: "Cannot edit players",
+        description: "Player changes are not allowed in tournament mode",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const match = matches.find(m => m.id === matchId);
     if (match) {
       setEditingMatch(matchId);
@@ -723,6 +734,8 @@ export const ScheduleView = ({
   //   checkPlayerConflicts(matchScores);
   // }, []);
 
+  const isTournamentMode = gameConfig.schedulingType && gameConfig.schedulingType !== 'round-robin';
+
   return <div className="h-full overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-1 border-b mb-2">
@@ -737,69 +750,83 @@ export const ScheduleView = ({
             </div>
           </div>
           
-          <Button 
-            variant={isPlayerView ? "outline" : "default"} 
-            size="sm" 
-            onClick={() => {
-              if (isPlayerView) {
-                onReleaseIdentity?.();
-              } else {
-                onShowPlayerSelector?.();
-              }
-            }} 
-            className="gap-2 flex-shrink-0"
-          >
-            {isPlayerView ? (
-              <>
-                <Users className="h-4 w-4" />
-                Organizer View
-              </>
-            ) : (
-              <>
-                <UserCircle className="h-4 w-4" />
-                Player View
-              </>
+          <div className="flex items-center gap-2">
+            {isTournamentMode && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Brackets className="mr-2 h-4 w-4" />
+                    View Bracket
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Tournament Bracket Overview</DialogTitle>
+                  </DialogHeader>
+                  <TournamentBracket
+                    matches={matches}
+                    matchScores={matchScores}
+                    onScoreUpdate={async (matchId, team1, team2) => {
+                      const match = matches.find(m => m.id === matchId);
+                      if (!match) return;
+
+                      // Update scores
+                      const newScores = new Map(matchScores);
+                      newScores.set(matchId, { team1, team2 });
+                      onMatchScoresUpdate(newScores);
+
+                      // Determine winner and advance in tournament
+                      const winner = team1 > team2 ? 'team1' : 'team2';
+                      const { advanceWinnerToNextMatch } = await import('@/lib/tournament-progression');
+                      const updatedMatches = advanceWinnerToNextMatch(match, winner, matches);
+
+                      // Save to database with scores
+                      const matchesWithScores = updatedMatches.map(m => {
+                        const score = newScores.get(m.id);
+                        return score ? { ...m, score } : m;
+                      });
+                      onScheduleUpdate(matchesWithScores, allPlayers);
+
+                      toast({ title: "Score confirmed", description: "Winner advanced to next round" });
+                    }}
+                    courtElapsedTimes={courtElapsedTimes}
+                    isPlayerView={isPlayerView}
+                    playerName={playerName}
+                  />
+                </DialogContent>
+              </Dialog>
             )}
-          </Button>
+            
+            <Button 
+              variant={isPlayerView ? "outline" : "default"} 
+              size="sm" 
+              onClick={() => {
+                if (isPlayerView) {
+                  onReleaseIdentity?.();
+                } else {
+                  onShowPlayerSelector?.();
+                }
+              }} 
+              className="gap-2 flex-shrink-0"
+            >
+              {isPlayerView ? (
+                <>
+                  <Users className="h-4 w-4" />
+                  Organizer View
+                </>
+              ) : (
+                <>
+                  <UserCircle className="h-4 w-4" />
+                  Player View
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Tournament Bracket or Courts Grid */}
-      {gameConfig.schedulingType && gameConfig.schedulingType !== 'round-robin' ? (
-        <div className="px-2 pb-2">
-          <TournamentBracket
-            matches={matches}
-            matchScores={matchScores}
-            onScoreUpdate={async (matchId, team1, team2) => {
-              const match = matches.find(m => m.id === matchId);
-              if (!match) return;
-
-              // Update scores
-              const newScores = new Map(matchScores);
-              newScores.set(matchId, { team1, team2 });
-              onMatchScoresUpdate(newScores);
-
-              // Determine winner and advance in tournament
-              const winner = team1 > team2 ? 'team1' : 'team2';
-              const { advanceWinnerToNextMatch } = await import('@/lib/tournament-progression');
-              const updatedMatches = advanceWinnerToNextMatch(match, winner, matches);
-
-              // Save to database with scores
-              const matchesWithScores = updatedMatches.map(m => {
-                const score = newScores.get(m.id);
-                return score ? { ...m, score } : m;
-              });
-              onScheduleUpdate(matchesWithScores, allPlayers);
-
-              toast({ title: "Score confirmed", description: "Winner advanced to next round" });
-            }}
-            courtElapsedTimes={courtElapsedTimes}
-            isPlayerView={isPlayerView}
-            playerName={playerName}
-          />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-2 px-2 pb-2">
+      {/* Courts Grid */}
+      <div className="grid grid-cols-1 gap-2 px-2 pb-2">
           {/* Round Robin Courts Grid */}
         {courtConfigs.map(courtConfig => {
         const courtMatches = matches.filter(m => m.court === courtConfig.courtNumber);
@@ -863,9 +890,16 @@ export const ScheduleView = ({
                           <div className="space-y-1 max-w-full overflow-hidden">
                             {/* Match Status Header */}
                             <div className="flex items-center justify-between">
-                              <Badge className={`text-xs py-0 ${isCurrentMatch ? 'bg-primary text-primary-foreground' : isNextMatch ? 'bg-accent text-accent-foreground' : isPreviousMatch ? 'bg-muted text-muted-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                                {String.fromCharCode(64 + courtConfig.courtNumber)}{idx + 1} {isCurrentMatch ? '• Current' : isNextMatch ? '• Up Next' : isPreviousMatch ? '• Done' : ''}
-                              </Badge>
+                              <div className="flex items-center gap-1">
+                                <Badge className={`text-xs py-0 ${isCurrentMatch ? 'bg-primary text-primary-foreground' : isNextMatch ? 'bg-accent text-accent-foreground' : isPreviousMatch ? 'bg-muted text-muted-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                                  {String.fromCharCode(64 + courtConfig.courtNumber)}{idx + 1} {isCurrentMatch ? '• Current' : isNextMatch ? '• Up Next' : isPreviousMatch ? '• Done' : ''}
+                                </Badge>
+                                {isTournamentMode && match.tournamentMetadata?.roundName && (
+                                  <Badge variant="outline" className="text-[10px] py-0">
+                                    {match.tournamentMetadata.roundName}
+                                  </Badge>
+                                )}
+                              </div>
                               <Badge variant="outline" className="text-[10px] py-0">
                                 <Clock className="w-2.5 h-2.5 mr-0.5" />
                                 {match.elapsedTime || `${new Date(Date.now() + match.startTime * 60000).toLocaleTimeString('en-US', {
@@ -911,7 +945,7 @@ export const ScheduleView = ({
                             {/* VS with Change Players Button */}
                             <div className="flex items-center justify-center gap-2">
                               <div className="text-[10px] font-bold text-muted-foreground">VS</div>
-                              {isCurrentMatch && !editingMatch && <Button onClick={() => startEditingPlayers(match.id)} variant="outline" className="h-6 px-3 text-[10px]" size="sm">
+                              {isCurrentMatch && !editingMatch && !isTournamentMode && <Button onClick={() => startEditingPlayers(match.id)} variant="outline" className="h-6 px-3 text-[10px]" size="sm">
                                   Change Players
                                 </Button>}
                             </div>
@@ -996,6 +1030,5 @@ export const ScheduleView = ({
             </div>;
         })}
         </div>
-      )}
     </div>;
 };
