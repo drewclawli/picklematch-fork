@@ -18,77 +18,62 @@ export function advanceWinnerToNextMatch(
   
   let updatedMatches = [...allMatches];
   
-  // Advance winner
+  // Advance winner to next match
   if (advancesTo) {
     updatedMatches = updatedMatches.map(match => {
       if (match.id === advancesTo) {
-        // Determine which slot to place winner in
-        const metadata = match.tournamentMetadata;
-        if (metadata?.sourceMatch1 === completedMatch.id) {
-          // Winner goes to team1
+        // Determine which slot to place winner in based on match number
+        // Odd match numbers (1, 3, 5...) advance to team1 slot
+        // Even match numbers (2, 4, 6...) advance to team2 slot
+        const isFirstSlot = completedMatch.tournamentMetadata?.matchNumber! % 2 === 1;
+        
+        if (isFirstSlot) {
           return {
             ...match,
             team1: [winnerName] as [string],
-            status: match.team2[0] !== 'TBD' ? 'scheduled' : match.status
+            status: (match.team2[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
           };
-        } else if (metadata?.sourceMatch2 === completedMatch.id) {
-          // Winner goes to team2
+        } else {
           return {
             ...match,
             team2: [winnerName] as [string],
-            status: match.team1[0] !== 'TBD' ? 'scheduled' : match.status
+            status: (match.team1[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
           };
-        } else {
-          // Determine based on match number (even/odd)
-          const isFirstSlot = completedMatch.tournamentMetadata?.matchNumber! % 2 === 1;
-          if (isFirstSlot && match.team1[0] === 'TBD') {
-            return {
-              ...match,
-              team1: [winnerName] as [string],
-              status: match.team2[0] !== 'TBD' ? 'scheduled' : match.status
-            };
-          } else if (!isFirstSlot && match.team2[0] === 'TBD') {
-            return {
-              ...match,
-              team2: [winnerName] as [string],
-              status: match.team1[0] !== 'TBD' ? 'scheduled' : match.status
-            };
-          }
         }
       }
       return match;
     });
   }
   
-  // Advance loser (double elimination only)
+  // Advance loser to loser's bracket (double elimination only)
   if (loserAdvancesTo && bracketType === 'winners') {
     updatedMatches = updatedMatches.map(match => {
       if (match.id === loserAdvancesTo) {
-        // Determine which slot to place loser in
         const isFirstSlot = completedMatch.tournamentMetadata?.matchNumber! % 2 === 1;
+        
         if (isFirstSlot && match.team1[0] === 'TBD') {
           return {
             ...match,
             team1: [loserName] as [string],
-            status: match.team2[0] !== 'TBD' ? 'scheduled' : match.status
+            status: (match.team2[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
           };
         } else if (!isFirstSlot && match.team2[0] === 'TBD') {
           return {
             ...match,
             team2: [loserName] as [string],
-            status: match.team1[0] !== 'TBD' ? 'scheduled' : match.status
+            status: (match.team1[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
           };
         } else if (match.team1[0] === 'TBD') {
           return {
             ...match,
             team1: [loserName] as [string],
-            status: match.team2[0] !== 'TBD' ? 'scheduled' : match.status
+            status: (match.team2[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
           };
         } else if (match.team2[0] === 'TBD') {
           return {
             ...match,
             team2: [loserName] as [string],
-            status: match.team1[0] !== 'TBD' ? 'scheduled' : match.status
+            status: (match.team1[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
           };
         }
       }
@@ -107,13 +92,13 @@ export function advanceWinnerToNextMatch(
             return {
               ...match,
               team1: [loserName] as [string],
-              status: match.team2[0] !== 'TBD' ? 'scheduled' : match.status
+              status: (match.team2[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
             };
           } else if (metadata.sourceMatch2 === completedMatch.id && match.team2[0] === 'TBD') {
             return {
               ...match,
               team2: [loserName] as [string],
-              status: match.team1[0] !== 'TBD' ? 'scheduled' : match.status
+              status: (match.team1[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
             };
           }
         }

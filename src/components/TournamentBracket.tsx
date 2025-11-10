@@ -137,6 +137,11 @@ export const TournamentBracket = ({
     const pending = pendingScores.get(match.id);
     const metadata = match.tournamentMetadata!;
 
+    // Don't render matches where both teams are TBD (shouldn't exist anyway)
+    if (match.team1[0] === 'TBD' && match.team2[0] === 'TBD') {
+      return null;
+    }
+
     // Filter for player view
     if (isPlayerView && playerName) {
       const hasPlayer = match.team1.some(p => p === playerName) || match.team2.some(p => p === playerName);
@@ -263,40 +268,59 @@ export const TournamentBracket = ({
   const renderSingleEliminationBracket = () => {
     return (
       <div className="space-y-6">
-        <div className="flex overflow-x-auto pb-4 gap-4">
+        <div className="flex overflow-x-auto pb-4 gap-6">
           {sortedRounds.map((roundNum, roundIdx) => {
-            const roundMatches = rounds.get(roundNum)!;
+            const roundMatches = rounds.get(roundNum)!.filter(m => 
+              !(m.team1[0] === 'TBD' && m.team2[0] === 'TBD')
+            );
+            
+            if (roundMatches.length === 0) return null;
+            
             const roundName = roundMatches[0]?.tournamentMetadata?.roundName || `Round ${roundNum}`;
             
             return (
-              <div key={roundNum} className="flex-shrink-0 space-y-3 min-w-[200px]">
-                <h3 className="text-xs font-bold text-center text-foreground uppercase tracking-wide sticky top-0 bg-background/95 backdrop-blur-sm py-2 rounded">
-                  {roundName}
-                </h3>
-                <div className="space-y-4">
-                  {roundMatches.map((match, idx) => (
-                    <div key={match.id} className="relative">
-                      {renderMatchCard(match)}
-                      
-                      {/* Connector line to next round */}
-                      {roundIdx < sortedRounds.length - 1 && (
-                        <div className="absolute left-full top-1/2 w-4 h-0.5 bg-border -translate-y-1/2"></div>
-                      )}
-                    </div>
-                  ))}
+              <div key={roundNum} className="flex-shrink-0 min-w-[220px]">
+                <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-3">
+                  <h3 className="text-sm font-bold text-center text-foreground uppercase tracking-wide px-2 py-2 rounded-lg border-b-2 border-primary/20">
+                    {roundName}
+                  </h3>
+                  <p className="text-[10px] text-center text-muted-foreground mt-1">
+                    {roundMatches.length} {roundMatches.length === 1 ? 'match' : 'matches'}
+                  </p>
+                </div>
+                <div className="space-y-6 mt-4">
+                  {roundMatches.map((match, idx) => {
+                    const card = renderMatchCard(match);
+                    if (!card) return null;
+                    
+                    return (
+                      <div key={match.id} className="relative">
+                        {card}
+                        
+                        {/* Connector line to next round */}
+                        {roundIdx < sortedRounds.length - 1 && (
+                          <div className="absolute left-full top-1/2 w-6 border-t-2 border-primary/30 -translate-y-1/2">
+                            <div className="absolute right-0 top-0 w-2 h-2 bg-primary/30 rounded-full -translate-y-1/2"></div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
           
           {/* Finals */}
-          {finalsMatch && (
-            <div className="flex-shrink-0 space-y-3 min-w-[200px]">
-              <h3 className="text-xs font-bold text-center text-foreground uppercase tracking-wide sticky top-0 bg-background/95 backdrop-blur-sm py-2 rounded flex items-center justify-center gap-1">
-                <Trophy className="w-4 h-4 text-primary" />
-                Finals
-              </h3>
-              <div className="flex items-center justify-center">
+          {finalsMatch && !(finalsMatch.team1[0] === 'TBD' && finalsMatch.team2[0] === 'TBD') && (
+            <div className="flex-shrink-0 min-w-[240px]">
+              <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-3">
+                <h3 className="text-sm font-bold text-center text-foreground uppercase tracking-wide px-2 py-2 rounded-lg border-b-2 border-primary flex items-center justify-center gap-2">
+                  <Trophy className="w-5 h-5 text-primary" />
+                  Championship
+                </h3>
+              </div>
+              <div className="flex items-center justify-center mt-4">
                 {renderMatchCard(finalsMatch)}
               </div>
             </div>
@@ -304,13 +328,13 @@ export const TournamentBracket = ({
         </div>
         
         {/* Third Place Match */}
-        {thirdPlaceMatch && (
-          <div className="mt-8 pt-6 border-t">
-            <h3 className="text-xs font-bold text-center text-foreground uppercase tracking-wide mb-3">
-              3rd Place Match
+        {thirdPlaceMatch && !(thirdPlaceMatch.team1[0] === 'TBD' && thirdPlaceMatch.team2[0] === 'TBD') && (
+          <div className="mt-8 pt-6 border-t border-border/50">
+            <h3 className="text-sm font-bold text-center text-foreground uppercase tracking-wide mb-4 flex items-center justify-center gap-2">
+              <Badge variant="outline" className="text-xs">3rd Place</Badge>
             </h3>
             <div className="flex justify-center">
-              <div className="w-[200px]">
+              <div className="w-[220px]">
                 {renderMatchCard(thirdPlaceMatch)}
               </div>
             </div>
@@ -338,29 +362,43 @@ export const TournamentBracket = ({
       <div className="space-y-8">
         {/* Winners Bracket */}
         <div>
-          <h2 className="text-sm font-bold text-primary mb-4 flex items-center gap-2">
-            <Trophy className="w-4 h-4" />
+          <h2 className="text-sm font-bold text-primary mb-4 flex items-center gap-2 border-b border-primary/20 pb-2">
+            <Trophy className="w-5 h-5" />
             Winners Bracket
           </h2>
-          <div className="flex overflow-x-auto pb-4 gap-4">
+          <div className="flex overflow-x-auto pb-4 gap-6">
             {sortedWinnersRounds.map((roundNum, roundIdx) => {
-              const roundMatches = winnersRounds.get(roundNum)!;
+              const roundMatches = winnersRounds.get(roundNum)!.filter(m => 
+                !(m.team1[0] === 'TBD' && m.team2[0] === 'TBD')
+              );
+              
+              if (roundMatches.length === 0) return null;
+              
               const roundName = roundMatches[0]?.tournamentMetadata?.roundName || `Round ${roundNum}`;
               
               return (
-                <div key={roundNum} className="flex-shrink-0 space-y-3 min-w-[180px]">
-                  <h3 className="text-xs font-bold text-center text-foreground uppercase tracking-wide bg-background/95 backdrop-blur-sm py-2 rounded">
-                    {roundName}
-                  </h3>
-                  <div className="space-y-4">
-                    {roundMatches.map(match => (
-                      <div key={match.id} className="relative">
-                        {renderMatchCard(match, true)}
-                        {roundIdx < sortedWinnersRounds.length - 1 && (
-                          <div className="absolute left-full top-1/2 w-4 h-0.5 bg-border -translate-y-1/2"></div>
-                        )}
-                      </div>
-                    ))}
+                <div key={roundNum} className="flex-shrink-0 min-w-[200px]">
+                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-3">
+                    <h3 className="text-xs font-bold text-center text-foreground uppercase tracking-wide px-2 py-2 rounded-lg border-b border-primary/20">
+                      {roundName}
+                    </h3>
+                  </div>
+                  <div className="space-y-4 mt-4">
+                    {roundMatches.map(match => {
+                      const card = renderMatchCard(match, true);
+                      if (!card) return null;
+                      
+                      return (
+                        <div key={match.id} className="relative">
+                          {card}
+                          {roundIdx < sortedWinnersRounds.length - 1 && (
+                            <div className="absolute left-full top-1/2 w-6 border-t-2 border-primary/20 -translate-y-1/2">
+                              <div className="absolute right-0 top-0 w-2 h-2 bg-primary/30 rounded-full -translate-y-1/2"></div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -370,29 +408,34 @@ export const TournamentBracket = ({
 
         {/* Losers Bracket */}
         {losersBracket.length > 0 && (
-          <div className="pt-6 border-t">
-            <h2 className="text-sm font-bold text-muted-foreground mb-4 flex items-center gap-2">
+          <div className="pt-6 border-t border-border/50">
+            <h2 className="text-sm font-bold text-muted-foreground mb-4 flex items-center gap-2 border-b border-muted-foreground/20 pb-2">
               Losers Bracket
             </h2>
-            <div className="flex overflow-x-auto pb-4 gap-4">
-              {losersBracket.map(match => (
-                <div key={match.id} className="flex-shrink-0 min-w-[180px]">
-                  {renderMatchCard(match, true)}
-                </div>
-              ))}
+            <div className="flex overflow-x-auto pb-4 gap-6">
+              {losersBracket.filter(m => !(m.team1[0] === 'TBD' && m.team2[0] === 'TBD')).map(match => {
+                const card = renderMatchCard(match, true);
+                if (!card) return null;
+                
+                return (
+                  <div key={match.id} className="flex-shrink-0 min-w-[200px]">
+                    {card}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Grand Finals */}
-        {grandFinalsMatch && (
-          <div className="mt-8 pt-6 border-t">
-            <h3 className="text-sm font-bold text-center text-foreground uppercase tracking-wide mb-4 flex items-center justify-center gap-2">
-              <Trophy className="w-5 h-5 text-primary" />
+        {grandFinalsMatch && !(grandFinalsMatch.team1[0] === 'TBD' && grandFinalsMatch.team2[0] === 'TBD') && (
+          <div className="mt-8 pt-6 border-t border-border/50">
+            <h3 className="text-base font-bold text-center text-foreground uppercase tracking-wide mb-4 flex items-center justify-center gap-2 border-b-2 border-primary pb-2">
+              <Trophy className="w-6 h-6 text-primary" />
               Grand Finals
             </h3>
             <div className="flex justify-center">
-              <div className="w-[220px]">
+              <div className="w-[240px]">
                 {renderMatchCard(grandFinalsMatch)}
               </div>
             </div>

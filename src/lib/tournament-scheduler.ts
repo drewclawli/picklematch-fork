@@ -59,24 +59,21 @@ export function generateSingleEliminationBracket(
       let team2: [string] | ['TBD'];
       
       if (player1 && !player2) {
-        // Player 1 gets a bye
-        team1 = [player1.name];
-        team2 = ['TBD'];
+        // Player 1 gets a bye - advance directly, don't create match
         nextRoundPlayers.push(player1);
+        continue; // Skip creating this match
       } else if (player2 && !player1) {
-        // Player 2 gets a bye
-        team1 = ['TBD'];
-        team2 = [player2.name];
+        // Player 2 gets a bye - advance directly, don't create match
         nextRoundPlayers.push(player2);
+        continue; // Skip creating this match
       } else if (player1 && player2) {
         team1 = [player1.name];
         team2 = [player2.name];
         nextRoundPlayers.push(null); // Winner TBD
       } else {
-        // Both are byes (shouldn't happen with proper seeding)
-        team1 = ['TBD'];
-        team2 = ['TBD'];
+        // Both are byes - skip this match entirely
         nextRoundPlayers.push(null);
+        continue;
       }
       
       const match: Match = {
@@ -200,21 +197,21 @@ export function generateDoubleEliminationBracket(
       let team2: [string] | ['TBD'];
       
       if (player1 && !player2) {
-        team1 = [player1.name];
-        team2 = ['TBD'];
+        // Player 1 gets a bye - advance directly
         nextRoundPlayers.push(player1);
+        continue;
       } else if (player2 && !player1) {
-        team1 = ['TBD'];
-        team2 = [player2.name];
+        // Player 2 gets a bye - advance directly
         nextRoundPlayers.push(player2);
+        continue;
       } else if (player1 && player2) {
         team1 = [player1.name];
         team2 = [player2.name];
         nextRoundPlayers.push(null);
       } else {
-        team1 = ['TBD'];
-        team2 = ['TBD'];
+        // Both are byes - skip
         nextRoundPlayers.push(null);
+        continue;
       }
       
       matches.push({
