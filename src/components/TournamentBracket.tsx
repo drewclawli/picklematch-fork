@@ -160,6 +160,29 @@ export const TournamentBracket = ({
       return team === 'team1' ? score.team1 > score.team2 : score.team2 > score.team1;
     };
 
+    // Get player label for TBD players
+    const getPlayerLabel = (teamSlot: 'team1' | 'team2') => {
+      const player = match[teamSlot][0];
+      if (player !== 'TBD') return player;
+      
+      // Find which source match feeds into this slot
+      const { sourceMatch1, sourceMatch2 } = metadata;
+      
+      // team1 comes from sourceMatch1, team2 comes from sourceMatch2
+      const sourceMatchId = teamSlot === 'team1' ? sourceMatch1 : sourceMatch2;
+      
+      if (sourceMatchId) {
+        const sourceMatch = matches.find(m => m.id === sourceMatchId);
+        if (sourceMatch) {
+          const sourceRoundName = sourceMatch.tournamentMetadata?.roundName || '';
+          const sourceMatchNum = sourceMatch.tournamentMetadata?.matchNumber || '';
+          return `Winner of ${sourceRoundName} #${sourceMatchNum}`;
+        }
+      }
+      
+      return 'TBD';
+    };
+
     return (
       <Card key={match.id} className={`${getBorderColor()} transition-all ${isCompact ? 'p-2' : 'p-3'} relative`}>
         {/* Seed indicators */}
@@ -176,10 +199,10 @@ export const TournamentBracket = ({
           {isWinner('team1') && (
             <Crown className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-3 text-primary fill-primary" />
           )}
-          <span className={`text-xs font-medium ${
+          <span className={`text-[10px] font-medium ${
             match.team1[0] === 'TBD' ? 'text-muted-foreground italic' : 'text-foreground'
           } ${isWinner('team1') ? 'font-bold text-primary ml-3' : ''} truncate`}>
-            {match.team1[0]}
+            {getPlayerLabel('team1')}
           </span>
           {status === 'ready' && !score ? (
             <Input
@@ -206,10 +229,10 @@ export const TournamentBracket = ({
           {isWinner('team2') && (
             <Crown className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-3 text-primary fill-primary" />
           )}
-          <span className={`text-xs font-medium ${
+          <span className={`text-[10px] font-medium ${
             match.team2[0] === 'TBD' ? 'text-muted-foreground italic' : 'text-foreground'
           } ${isWinner('team2') ? 'font-bold text-primary ml-3' : ''} truncate`}>
-            {match.team2[0]}
+            {getPlayerLabel('team2')}
           </span>
           {status === 'ready' && !score ? (
             <Input

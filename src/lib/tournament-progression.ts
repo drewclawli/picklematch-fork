@@ -16,7 +16,12 @@ export function advanceWinnerToNextMatch(
   const winnerName = winner === 'team1' ? completedMatch.team1[0] : completedMatch.team2[0];
   const loserName = winner === 'team1' ? completedMatch.team2[0] : completedMatch.team1[0];
   
-  let updatedMatches = [...allMatches];
+  // Mark completed match as completed
+  let updatedMatches = allMatches.map(m => 
+    m.id === completedMatch.id 
+      ? { ...m, status: 'completed' as Match['status'] }
+      : m
+  );
   
   // Advance winner to next match
   if (advancesTo) {
@@ -28,16 +33,18 @@ export function advanceWinnerToNextMatch(
         const isFirstSlot = completedMatch.tournamentMetadata?.matchNumber! % 2 === 1;
         
         if (isFirstSlot) {
+          const newTeam2 = match.team2[0] !== 'TBD' ? match.team2 : match.team2;
           return {
             ...match,
             team1: [winnerName] as [string],
-            status: (match.team2[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
+            status: (newTeam2[0] !== 'TBD' ? 'scheduled' : 'scheduled') as Match['status']
           };
         } else {
+          const newTeam1 = match.team1[0] !== 'TBD' ? match.team1 : match.team1;
           return {
             ...match,
             team2: [winnerName] as [string],
-            status: (match.team1[0] !== 'TBD' ? 'scheduled' : match.status) as Match['status']
+            status: (newTeam1[0] !== 'TBD' ? 'scheduled' : 'scheduled') as Match['status']
           };
         }
       }

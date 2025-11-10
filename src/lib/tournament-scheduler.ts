@@ -94,6 +94,8 @@ export function generateSingleEliminationBracket(
           advancesTo: nextMatchId,
           seed1: player1?.seed,
           seed2: player2?.seed,
+          sourceMatch1: round > 1 ? `tournament-r${round - 1}-m${(matchNum * 2) + 1}` : undefined,
+          sourceMatch2: round > 1 ? `tournament-r${round - 1}-m${(matchNum * 2) + 2}` : undefined,
         }
       };
       
@@ -233,6 +235,8 @@ export function generateDoubleEliminationBracket(
           loserAdvancesTo: losersMatchId,
           seed1: player1?.seed,
           seed2: player2?.seed,
+          sourceMatch1: round > 1 ? `tournament-wb-r${round - 1}-m${(matchNum * 2) + 1}` : undefined,
+          sourceMatch2: round > 1 ? `tournament-wb-r${round - 1}-m${(matchNum * 2) + 2}` : undefined,
         }
       });
     }
