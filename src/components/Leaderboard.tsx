@@ -14,21 +14,27 @@ interface PlayerStats {
   wins: number;
   losses: number;
   matchesPlayed: number;
-  winRate: number; // wins / matchesPlayed
-  totalScored: number; // Total points scored
-  totalAllowed: number; // Total points allowed
-  differential: number; // totalScored - totalAllowed
-  differentialPerGame: number; // differential / matchesPlayed
+  winRate: number;
+  totalScored: number;
+  totalAllowed: number;
+  differential: number;
+  differentialPerGame: number;
+  placement?: number;
+  roundsWon?: number;
 }
 
 export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps) => {
+  // Detect if this is a tournament
+  const isTournament = matches.some(m => m.tournamentMetadata);
+
   // Calculate stats for each player
   const playerStats = players.map(player => {
     let wins = 0;
     let losses = 0;
-    let totalScored = 0; // Total points scored
-    let totalAllowed = 0; // Total points allowed
+    let totalScored = 0;
+    let totalAllowed = 0;
     let matchesPlayed = 0;
+    let lastRound = 0;
 
     matches.forEach(match => {
       const score = matchScores.get(match.id);
@@ -42,6 +48,10 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
       matchesPlayed++;
       const team1Score = typeof score.team1 === 'number' ? score.team1 : Number(score.team1);
       const team2Score = typeof score.team2 === 'number' ? score.team2 : Number(score.team2);
+
+      if (isTournament && match.tournamentMetadata) {
+        lastRound = Math.max(lastRound, match.tournamentMetadata.round);
+      }
 
       if (isInTeam1) {
         totalScored += team1Score;
@@ -66,6 +76,17 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
     const differential = totalScored - totalAllowed;
     const differentialPerGame = matchesPlayed > 0 ? differential / matchesPlayed : 0;
 
+    // Tournament placement calculation
+    let placement = 1;
+    if (isTournament) {
+      const totalRounds = Math.max(...matches.map(m => m.tournamentMetadata?.round || 0));
+      if (lastRound === 0) {
+        placement = players.length;
+      } else {
+        placement = Math.pow(2, totalRounds - lastRound);
+      }
+    }
+
     return { 
       player, 
       wins, 
@@ -75,15 +96,23 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
       totalScored, 
       totalAllowed, 
       differential, 
-      differentialPerGame 
+      differentialPerGame,
+      placement,
+      roundsWon: lastRound
     };
   });
 
-  // Sort by win rate (descending), then by differential per game (descending) as tiebreaker
-  const sortedStats = playerStats.sort((a, b) => {
-    if (b.winRate !== a.winRate) return b.winRate - a.winRate;
-    return b.differentialPerGame - a.differentialPerGame;
-  });
+  // Sort by placement for tournaments, or by win rate for round robin
+  const sortedStats = isTournament 
+    ? playerStats.sort((a, b) => {
+        if (a.placement !== b.placement) return a.placement - b.placement;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.differentialPerGame - a.differentialPerGame;
+      })
+    : playerStats.sort((a, b) => {
+        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        return b.differentialPerGame - a.differentialPerGame;
+      });
 
   // Only show leaderboard if there are completed matches
   if (matchScores.size === 0) return null;
@@ -101,9 +130,10 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-          Track player performance with real-time win rates, match records, and point differentials. 
-          Our smart ranking system automatically updates as matches complete, showing who leads in wins, 
-          scoring efficiency, and overall tournament performance.
+          {isTournament 
+            ? "Tournament standings based on advancement rounds and match wins. Players are ranked by how far they progressed in the bracket."
+            : "Track player performance with real-time win rates, match records, and point differentials. Our smart ranking system automatically updates as matches complete, showing who leads in wins, scoring efficiency, and overall tournament performance."
+          }
         </p>
       </div>
 
@@ -136,28 +166,40 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <div className="text-center">
-                    <div className="text-sm font-extrabold text-accent">{(stat.winRate * 100).toFixed(0)}%</div>
-                    <div className="text-[9px] text-muted-foreground">WR</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm font-extrabold text-primary">{stat.wins}-{stat.losses}</div>
-                    <div className="text-[9px] text-muted-foreground">W-L</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`text-sm font-extrabold ${stat.differential >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {stat.differential >= 0 ? '+' : ''}{stat.differential}
+                  <div className="flex items-center gap-3">
+                    {isTournament && (
+                      <div className="text-center">
+                        <div className="text-sm font-extrabold text-accent">
+                          {stat.placement === 1 ? '1st' : stat.placement === 2 ? '2nd' : stat.placement === 3 ? '3rd' : `${stat.placement}th`}
+                        </div>
+                        <div className="text-[9px] text-muted-foreground">Place</div>
+                      </div>
+                    )}
+                    <div className="text-center">
+                      <div className="text-sm font-extrabold text-accent">{(stat.winRate * 100).toFixed(0)}%</div>
+                      <div className="text-[9px] text-muted-foreground">WR</div>
                     </div>
-                    <div className="text-[9px] text-muted-foreground">Diff</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`text-sm font-extrabold ${stat.differentialPerGame >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {stat.differentialPerGame >= 0 ? '+' : ''}{stat.differentialPerGame.toFixed(1)}
+                    <div className="text-center">
+                      <div className="text-sm font-extrabold text-primary">{stat.wins}-{stat.losses}</div>
+                      <div className="text-[9px] text-muted-foreground">W-L</div>
                     </div>
-                    <div className="text-[9px] text-muted-foreground">D/G</div>
+                    {!isTournament && (
+                      <>
+                        <div className="text-center">
+                          <div className={`text-sm font-extrabold ${stat.differential >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {stat.differential >= 0 ? '+' : ''}{stat.differential}
+                          </div>
+                          <div className="text-[9px] text-muted-foreground">Diff</div>
+                        </div>
+                        <div className="text-center">
+                          <div className={`text-sm font-extrabold ${stat.differentialPerGame >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {stat.differentialPerGame >= 0 ? '+' : ''}{stat.differentialPerGame.toFixed(1)}
+                          </div>
+                          <div className="text-[9px] text-muted-foreground">D/G</div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                </div>
               </div>
             </Card>
           ))}

@@ -96,14 +96,26 @@ export function advanceWinnerToNextMatch(
     });
   }
   
-  // Handle third place match - losers from semifinals
-  if (bracketType === 'finals') {
-    const thirdPlaceMatch = allMatches.find(m => m.tournamentMetadata?.bracketType === 'third-place');
-    if (thirdPlaceMatch) {
+  // Handle third place match - advance losers from semifinals
+  const thirdPlaceMatch = allMatches.find(m => m.tournamentMetadata?.bracketType === 'third-place');
+  if (thirdPlaceMatch && bracketType === 'winners') {
+    const metadata = thirdPlaceMatch.tournamentMetadata;
+    if (metadata?.sourceMatch1 === completedMatch.id || metadata?.sourceMatch2 === completedMatch.id) {
       updatedMatches = updatedMatches.map(match => {
         if (match.id === thirdPlaceMatch.id) {
-          // This is handled when semifinals complete
-          return match;
+          if (metadata.sourceMatch1 === completedMatch.id && match.team1[0] === 'TBD') {
+            return {
+              ...match,
+              team1: [loserName] as [string],
+              status: match.team2[0] !== 'TBD' ? 'scheduled' : match.status
+            };
+          } else if (metadata.sourceMatch2 === completedMatch.id && match.team2[0] === 'TBD') {
+            return {
+              ...match,
+              team2: [loserName] as [string],
+              status: match.team1[0] !== 'TBD' ? 'scheduled' : match.status
+            };
+          }
         }
         return match;
       });

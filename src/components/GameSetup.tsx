@@ -74,6 +74,14 @@ export const GameSetup = ({
     setCourtConfigs(newConfigs);
   };
   const handleContinue = () => {
+    // Validate minimum players for tournaments
+    if (schedulingType === 'single-elimination' || schedulingType === 'double-elimination') {
+      if (playerCount < 4) {
+        toast.error("Tournament mode requires at least 4 players");
+        return;
+      }
+    }
+    
     onComplete({
       gameDuration,
       totalTime,
@@ -246,16 +254,27 @@ export const GameSetup = ({
           
           {/* Tournament-specific options */}
           {schedulingType === 'single-elimination' && (
-            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 mt-2">
-              <Switch 
-                id="third-place" 
-                checked={thirdPlaceMatch} 
-                onCheckedChange={setThirdPlaceMatch}
-                className="scale-90"
-              />
-              <Label htmlFor="third-place" className="text-xs cursor-pointer">
-                Include 3rd place match
-              </Label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+                <Switch 
+                  id="third-place" 
+                  checked={thirdPlaceMatch} 
+                  onCheckedChange={setThirdPlaceMatch}
+                  className="scale-90"
+                />
+                <Label htmlFor="third-place" className="text-xs cursor-pointer">
+                  Include 3rd place match
+                </Label>
+              </div>
+              <div className="text-[10px] text-muted-foreground p-2 bg-accent/5 rounded-md">
+                💡 Single elimination: Each loss eliminates a player. Fast-paced tournament format.
+              </div>
+            </div>
+          )}
+          
+          {schedulingType === 'double-elimination' && (
+            <div className="text-[10px] text-muted-foreground p-2 bg-accent/5 rounded-md">
+              💡 Double elimination: Players get a second chance in the losers bracket. More matches, more opportunities.
             </div>
           )}
         </div>

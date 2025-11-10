@@ -770,7 +770,7 @@ export const ScheduleView = ({
           <TournamentBracket
             matches={matches}
             matchScores={matchScores}
-            onScoreUpdate={(matchId, team1, team2) => {
+            onScoreUpdate={async (matchId, team1, team2) => {
               const match = matches.find(m => m.id === matchId);
               if (!match) return;
 
@@ -781,17 +781,17 @@ export const ScheduleView = ({
 
               // Determine winner and advance in tournament
               const winner = team1 > team2 ? 'team1' : 'team2';
-              const { advanceWinnerToNextMatch } = require('@/lib/tournament-progression');
+              const { advanceWinnerToNextMatch } = await import('@/lib/tournament-progression');
               const updatedMatches = advanceWinnerToNextMatch(match, winner, matches);
 
-              // Save to database
+              // Save to database with scores
               const matchesWithScores = updatedMatches.map(m => {
                 const score = newScores.get(m.id);
                 return score ? { ...m, score } : m;
               });
               onScheduleUpdate(matchesWithScores, allPlayers);
 
-              toast({ title: "Score confirmed" });
+              toast({ title: "Score confirmed", description: "Winner advanced to next round" });
             }}
             courtElapsedTimes={courtElapsedTimes}
             isPlayerView={isPlayerView}

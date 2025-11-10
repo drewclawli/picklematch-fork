@@ -339,14 +339,42 @@ const Index = () => {
       regenerateFromTime = maxPreservedEndTime;
     }
 
-    // Generate new schedule
-    const newSchedule = generateSchedule(playerList, gameConfig.gameDuration, gameConfig.totalTime, gameConfig.courts, undefined, teammatePairs, gameConfig.courtConfigs);
+    // Generate new schedule based on scheduling type
+    let newSchedule: Match[];
+    
+    if (gameConfig.schedulingType === 'single-elimination') {
+      const { generateSingleEliminationBracket } = await import('@/lib/tournament-scheduler');
+      newSchedule = generateSingleEliminationBracket(
+        playerList,
+        gameConfig.courts,
+        gameConfig.gameDuration,
+        gameConfig.courtConfigs || [],
+        gameConfig.tournamentSettings?.thirdPlaceMatch || false
+      );
+    } else if (gameConfig.schedulingType === 'double-elimination') {
+      const { generateDoubleEliminationBracket } = await import('@/lib/tournament-scheduler');
+      newSchedule = generateDoubleEliminationBracket(
+        playerList,
+        gameConfig.courts,
+        gameConfig.gameDuration,
+        gameConfig.courtConfigs || []
+      );
+    } else {
+      // Round robin (default)
+      newSchedule = generateSchedule(playerList, gameConfig.gameDuration, gameConfig.totalTime, gameConfig.courts, undefined, teammatePairs, gameConfig.courtConfigs);
+    }
 
-    // Filter new schedule to only include matches after regeneration point
-    const futureMatches = newSchedule.filter(m => m.startTime >= regenerateFromTime);
-
-    // Combine preserved matches with future matches
-    const finalSchedule = [...preservedMatches, ...futureMatches];
+    // For tournaments, use full bracket. For round robin, preserve completed and regenerate future
+    let finalSchedule: Match[];
+    if (gameConfig.schedulingType && gameConfig.schedulingType !== 'round-robin') {
+      finalSchedule = newSchedule;
+    } else {
+      // Filter new schedule to only include matches after regeneration point
+      const futureMatches = newSchedule.filter(m => m.startTime >= regenerateFromTime);
+      // Combine preserved matches with future matches
+      finalSchedule = [...preservedMatches, ...futureMatches];
+    }
+    
     setMatches(finalSchedule);
     try {
       if (gameId) {
