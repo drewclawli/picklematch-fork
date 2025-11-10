@@ -463,9 +463,9 @@ const Index = () => {
           <h1 className="text-xl sm:text-2xl font-bold mb-0.5 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient_6s_linear_infinite]">
             TeamUp! Social Play
           </h1>
-          <p className="text-muted-foreground text-xs sm:text-sm font-medium">
-            🎾 Smart team assignment & scoring 🏓
-          </p>
+          <p className="text-muted-foreground text-xs sm:text-sm font-medium">🎾 Smart team assignment & scoring 🏓
+Live match scheduling with multi-court management, real-time scoring, and smart team rotation. Track timers, enter scores, and manage singles/doubles play across all courts simultaneously.
+        </p>
         </header>
 
         <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
