@@ -479,33 +479,34 @@ const Index = () => {
             </div>}
           
           {activeSection === "matches" && gameConfig && matches.length > 0 && <div className="flex flex-col h-full min-h-0">
-              {/* View Toggle Header */}
-              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+              {/* Header with View Toggle */}
+              <div className="flex items-center justify-between mb-4 sm:mb-6 flex-shrink-0">
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                  {isPlayerView ? "My Matches" : "Match Schedule"}
+                </h2>
                 <div className="flex items-center gap-2">
-                  {isPlayerView && playerName ? <>
-                      <UserCircle className="h-5 w-5 text-primary" />
-                      <span className="text-sm font-medium">Playing as: <span className="text-primary font-bold">{playerName}</span></span>
-                    </> : <>
-                      <Users className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium text-muted-foreground">Organizer View</span>
-                    </>}
-                </div>
-                <Button variant={isPlayerView ? "outline" : "default"} size="sm" onClick={() => {
+                  <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">
+                    {isPlayerView ? "Player View" : "Organizer View"}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => {
               if (isPlayerView) {
                 releaseIdentity();
                 toast.success("Switched to organizer view");
               } else {
                 setShowPlayerIdentitySelector(true);
               }
-            }} className="gap-2">
+            }} className="gap-1.5 sm:gap-2 h-8 sm:h-9 text-xs sm:text-sm">
                   {isPlayerView ? <>
-                      <Users className="h-4 w-4" />
-                      Organizer View
+                      <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Organizer View</span>
+                      <span className="sm:hidden">Organizer</span>
                     </> : <>
-                      <UserCircle className="h-4 w-4" />
-                      Player View
+                      <UserCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Player View</span>
+                      <span className="sm:hidden">Player</span>
                     </>}
                 </Button>
+                </div>
               </div>
 
               {/* Conditional View Rendering */}
