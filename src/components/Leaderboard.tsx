@@ -100,6 +100,11 @@ export const Leaderboard = ({ players, matches, matchScores }: LeaderboardProps)
             <p className="text-[10px] text-muted-foreground">Player rankings</p>
           </div>
         </div>
+        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+          Track player performance with real-time win rates, match records, and point differentials. 
+          Our smart ranking system automatically updates as matches complete, showing who leads in wins, 
+          scoring efficiency, and overall tournament performance.
+        </p>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto pb-24 pb-safe">

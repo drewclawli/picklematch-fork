@@ -93,6 +93,18 @@ export const GameSetup = ({ playerCount = 4, onComplete, onBack, gameCode }: Gam
 
   return (
     <div className="space-y-4 pb-2">
+      {/* Header Section */}
+      <div className="text-center mb-4">
+        <div className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent mb-2 shadow-sport">
+          <Trophy className="w-5 h-5 text-white" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground mb-1">Game Configuration</h2>
+        <p className="text-xs text-muted-foreground leading-relaxed max-w-md mx-auto">
+          Configure your tournament settings including match duration, total play time, and number of courts. 
+          Choose between singles and doubles play for each court to optimize your racket sports tournament 
+          scheduling for pickleball, badminton, or tennis games.
+        </p>
+      </div>
 
       {/* Game Code and QR Code Section */}
       {gameCode && (

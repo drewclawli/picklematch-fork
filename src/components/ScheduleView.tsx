@@ -719,9 +719,13 @@ export const ScheduleView = ({ matches, onBack, gameConfig, allPlayers, onSchedu
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
             <Trophy className="w-3.5 h-3.5 text-primary-foreground" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-sm sm:text-base font-bold text-foreground">Match Schedule</h2>
-            <p className="text-[9px] sm:text-[10px] text-muted-foreground">{matches.length} matches • {allPlayers.length} players</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground mb-1">{matches.length} matches • {allPlayers.length} players</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground leading-relaxed">
+              Live match scheduling with multi-court management, real-time scoring, and smart team rotation. 
+              Track timers, enter scores, and manage singles/doubles play across all courts simultaneously.
+            </p>
           </div>
         </div>
       </div>

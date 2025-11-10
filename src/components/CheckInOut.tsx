@@ -36,7 +36,12 @@ export const CheckInOut = ({
           <Users className="w-5 h-5 text-white" />
         </div>
         <h2 className="text-lg font-bold text-foreground mb-1">Players Check in</h2>
-        <p className="text-xs text-muted-foreground">Add or remove players. Matches will auto-reschedule.</p>
+        <p className="text-xs text-muted-foreground mb-2">Add or remove players. Matches will auto-reschedule.</p>
+        <p className="text-xs text-muted-foreground leading-relaxed max-w-md mx-auto">
+          Manage your tournament roster dynamically. Players can check in or out anytime, and our intelligent 
+          scheduling system automatically regenerates fair team assignments and match rotations to ensure 
+          everyone gets balanced playing time.
+        </p>
       </div>
 
       <div className="flex-1 min-h-0">
