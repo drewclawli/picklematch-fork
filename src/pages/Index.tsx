@@ -465,13 +465,12 @@ const Index = () => {
 
         <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
           {activeSection === "setup" && <div className="flex flex-col h-full">
-              {gameId && <div className="flex justify-end mb-2">
-                  <Button onClick={startNewSession} variant="outline" size="sm" className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3">
-                    New Session
-                  </Button>
-                </div>}
               <div className="flex-1 overflow-y-auto">
-                <GameSetup onComplete={handleGameConfigComplete} gameCode={gameCode} />
+                <GameSetup 
+                  onComplete={handleGameConfigComplete} 
+                  gameCode={gameCode} 
+                  onNewSession={gameId ? startNewSession : undefined}
+                />
               </div>
               <div className="pt-2 sm:pt-3 border-t mt-2 sm:mt-3 flex-shrink-0 bg-card/95 backdrop-blur-sm">
                 

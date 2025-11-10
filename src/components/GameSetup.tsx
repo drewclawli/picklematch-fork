@@ -15,6 +15,7 @@ interface GameSetupProps {
   onComplete: (config: GameConfig) => void;
   onBack?: () => void;
   gameCode?: string;
+  onNewSession?: () => void;
 }
 export interface GameConfig {
   gameDuration: number;
@@ -30,7 +31,8 @@ export const GameSetup = ({
   playerCount = 4,
   onComplete,
   onBack,
-  gameCode
+  gameCode,
+  onNewSession
 }: GameSetupProps) => {
   const [gameDuration, setGameDuration] = useState<number>(10);
   const [totalTime, setTotalTime] = useState<number>(60);
@@ -145,6 +147,18 @@ export const GameSetup = ({
             </div>
           </div>
         </Card>}
+
+      {/* New Session Button - appears when there's an active game */}
+      {gameCode && onNewSession && (
+        <Button 
+          onClick={onNewSession} 
+          variant="outline" 
+          size="sm" 
+          className="w-full gap-1 h-8 text-xs"
+        >
+          New Session
+        </Button>
+      )}
 
       {/* Form Layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
