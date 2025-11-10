@@ -5,8 +5,8 @@ export interface Match {
   endTime: number;
   clockStartTime?: string;
   clockEndTime?: string;
-  team1: [string, string] | [string] | ['TBD'] | ['TBD', 'TBD'];
-  team2: [string, string] | [string] | ['TBD'] | ['TBD', 'TBD'];
+  team1: [string, string] | [string];
+  team2: [string, string] | [string];
   score?: {
     team1: number;
     team2: number;
@@ -17,19 +17,6 @@ export interface Match {
   isLocked?: boolean;
   timerStartTime?: number;
   elapsedTime?: string;
-  // Tournament-specific metadata
-  tournamentMetadata?: {
-    bracketType: 'winners' | 'losers' | 'finals' | 'grand-finals' | 'third-place';
-    round: number;
-    roundName: string;
-    matchNumber: number;
-    advancesTo?: string; // Match ID winner advances to
-    loserAdvancesTo?: string; // Match ID loser advances to (double elimination)
-    seed1?: number;
-    seed2?: number;
-    sourceMatch1?: string; // ID of match feeding into this (winner/loser)
-    sourceMatch2?: string; // ID of match feeding into this (winner/loser)
-  };
 }
 
 export interface CourtConfig {

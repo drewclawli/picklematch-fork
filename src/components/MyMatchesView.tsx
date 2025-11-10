@@ -28,7 +28,7 @@ export const MyMatchesView = ({
   const [showCompleted, setShowCompleted] = useState(false);
 
   const renderMatch = (match: Match, status: "current" | "upnext" | "later" | "completed", matchIndex: number) => {
-    const team1HasPlayer = match.team1.some(p => p === playerName);
+    const team1HasPlayer = match.team1.includes(playerName);
     const score = matchScores.get(match.id);
     const isWinner = score && 
       ((team1HasPlayer && score.team1 > score.team2) || 

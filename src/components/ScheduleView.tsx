@@ -1,14 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Match, regenerateScheduleFromSlot, CourtConfig } from "@/lib/scheduler";
-import { TournamentBracket } from "@/components/TournamentBracket";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Timer, UserCircle, Brackets } from "lucide-react";
+import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Timer, UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { validateMatchScore } from "@/lib/validation";
 import { useStopwatch } from "@/hooks/use-stopwatch";
@@ -25,11 +23,6 @@ interface ScheduleViewProps {
       player2: string;
     }[];
     courtConfigs?: CourtConfig[];
-    schedulingType?: 'round-robin' | 'single-elimination' | 'double-elimination';
-    tournamentSettings?: {
-      seeding: 'random' | 'manual';
-      thirdPlaceMatch: boolean;
-    };
   };
   allPlayers: string[];
   onScheduleUpdate: (newMatches: Match[], newPlayers: string[]) => void;
@@ -208,16 +201,6 @@ export const ScheduleView = ({
     setPendingScores(newPending);
   };
   const startEditingPlayers = (matchId: string) => {
-    // Don't allow editing players in tournament mode
-    if (gameConfig.schedulingType && gameConfig.schedulingType !== 'round-robin') {
-      toast({
-        title: "Cannot edit players",
-        description: "Player changes are not allowed in tournament mode",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     const match = matches.find(m => m.id === matchId);
     if (match) {
       setEditingMatch(matchId);
@@ -734,8 +717,6 @@ export const ScheduleView = ({
   //   checkPlayerConflicts(matchScores);
   // }, []);
 
-  const isTournamentMode = gameConfig.schedulingType && gameConfig.schedulingType !== 'round-robin';
-
   return <div className="h-full overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-1 border-b mb-2">
@@ -750,92 +731,38 @@ export const ScheduleView = ({
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            {isTournamentMode && (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Brackets className="mr-2 h-4 w-4" />
-                    View Bracket
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Tournament Bracket Overview</DialogTitle>
-                  </DialogHeader>
-                  <TournamentBracket
-                    matches={matches}
-                    matchScores={matchScores}
-                    onScoreUpdate={async (matchId, team1, team2) => {
-                      const match = matches.find(m => m.id === matchId);
-                      if (!match) return;
-
-                      // Update scores
-                      const newScores = new Map(matchScores);
-                      newScores.set(matchId, { team1, team2 });
-                      onMatchScoresUpdate(newScores);
-
-                      // Determine winner and advance in tournament
-                      const winner = team1 > team2 ? 'team1' : 'team2';
-                      const { advanceWinnerToNextMatch } = await import('@/lib/tournament-progression');
-                      const updatedMatches = advanceWinnerToNextMatch(match, winner, matches);
-
-                      // Save to database with scores
-                      const matchesWithScores = updatedMatches.map(m => {
-                        const score = newScores.get(m.id);
-                        return score ? { ...m, score } : m;
-                      });
-                      onScheduleUpdate(matchesWithScores, allPlayers);
-
-                      toast({ title: "Score confirmed", description: "Winner advanced to next round" });
-                    }}
-                    courtElapsedTimes={courtElapsedTimes}
-                    isPlayerView={isPlayerView}
-                    playerName={playerName}
-                  />
-                </DialogContent>
-              </Dialog>
+          <Button 
+            variant={isPlayerView ? "outline" : "default"} 
+            size="sm" 
+            onClick={() => {
+              if (isPlayerView) {
+                onReleaseIdentity?.();
+              } else {
+                onShowPlayerSelector?.();
+              }
+            }} 
+            className="gap-2 flex-shrink-0"
+          >
+            {isPlayerView ? (
+              <>
+                <Users className="h-4 w-4" />
+                Organizer View
+              </>
+            ) : (
+              <>
+                <UserCircle className="h-4 w-4" />
+                Player View
+              </>
             )}
-            
-            <Button 
-              variant={isPlayerView ? "outline" : "default"} 
-              size="sm" 
-              onClick={() => {
-                if (isPlayerView) {
-                  onReleaseIdentity?.();
-                } else {
-                  onShowPlayerSelector?.();
-                }
-              }} 
-              className="gap-2 flex-shrink-0"
-            >
-              {isPlayerView ? (
-                <>
-                  <Users className="h-4 w-4" />
-                  Organizer View
-                </>
-              ) : (
-                <>
-                  <UserCircle className="h-4 w-4" />
-                  Player View
-                </>
-              )}
-            </Button>
-          </div>
+          </Button>
         </div>
       </div>
 
-      {/* Courts Grid */}
+      {/* Courts Grid - Vertical layout with Court A above Court B */}
       <div className="grid grid-cols-1 gap-2 px-2 pb-2">
-          {/* Round Robin Courts Grid */}
         {courtConfigs.map(courtConfig => {
         const courtMatches = matches.filter(m => m.court === courtConfig.courtNumber);
-        // In tournament mode, exclude matches with TBD players from being "current"
-        const currentMatchIndex = courtMatches.findIndex(m => {
-          if (matchScores.has(m.id)) return false;
-          if (isTournamentMode && (m.team1[0] === 'TBD' || m.team2[0] === 'TBD')) return false;
-          return true;
-        });
+        const currentMatchIndex = courtMatches.findIndex(m => !matchScores.has(m.id));
         return <div key={courtConfig.courtNumber} className="space-y-2">
               {/* Court Header - Compact */}
               <div className={`flex items-center justify-between gap-2 rounded-lg p-2 border ${courtConfig.courtNumber === 1 ? 'bg-greenery border-greenery/30' : 'bg-pantone-493c border-pantone-493c/30'}`}>
@@ -895,16 +822,9 @@ export const ScheduleView = ({
                           <div className="space-y-1 max-w-full overflow-hidden">
                             {/* Match Status Header */}
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1">
-                                <Badge className={`text-xs py-0 ${isCurrentMatch ? 'bg-primary text-primary-foreground' : isNextMatch ? 'bg-accent text-accent-foreground' : isPreviousMatch ? 'bg-muted text-muted-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                                  {String.fromCharCode(64 + courtConfig.courtNumber)}{idx + 1} {isCurrentMatch ? '• Current' : isNextMatch ? '• Up Next' : isPreviousMatch ? '• Done' : ''}
-                                </Badge>
-                                {isTournamentMode && match.tournamentMetadata?.roundName && (
-                                  <Badge variant="outline" className="text-[10px] py-0">
-                                    {match.tournamentMetadata.roundName}
-                                  </Badge>
-                                )}
-                              </div>
+                              <Badge className={`text-xs py-0 ${isCurrentMatch ? 'bg-primary text-primary-foreground' : isNextMatch ? 'bg-accent text-accent-foreground' : isPreviousMatch ? 'bg-muted text-muted-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                                {String.fromCharCode(64 + courtConfig.courtNumber)}{idx + 1} {isCurrentMatch ? '• Current' : isNextMatch ? '• Up Next' : isPreviousMatch ? '• Done' : ''}
+                              </Badge>
                               <Badge variant="outline" className="text-[10px] py-0">
                                 <Clock className="w-2.5 h-2.5 mr-0.5" />
                                 {match.elapsedTime || `${new Date(Date.now() + match.startTime * 60000).toLocaleTimeString('en-US', {
@@ -950,7 +870,7 @@ export const ScheduleView = ({
                             {/* VS with Change Players Button */}
                             <div className="flex items-center justify-center gap-2">
                               <div className="text-[10px] font-bold text-muted-foreground">VS</div>
-                              {isCurrentMatch && !editingMatch && !isTournamentMode && <Button onClick={() => startEditingPlayers(match.id)} variant="outline" className="h-6 px-3 text-[10px]" size="sm">
+                              {isCurrentMatch && !editingMatch && <Button onClick={() => startEditingPlayers(match.id)} variant="outline" className="h-6 px-3 text-[10px]" size="sm">
                                   Change Players
                                 </Button>}
                             </div>
@@ -1033,7 +953,7 @@ export const ScheduleView = ({
                 <CarouselNext className="-right-2 h-8 w-8" />
               </Carousel>
             </div>;
-        })}
-        </div>
+      })}
+      </div>
     </div>;
 };
