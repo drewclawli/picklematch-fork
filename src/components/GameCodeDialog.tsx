@@ -29,82 +29,82 @@ export const GameCodeDialog = ({
     onJoinGame(code);
   };
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="space-y-3">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="space-y-2">
           <div className="flex items-center justify-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-lg">
               <Trophy className="w-6 h-6 text-white" />
             </div>
           </div>
-          <DialogTitle className="text-2xl text-center bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+          <DialogTitle className="text-xl sm:text-2xl text-center bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
             TeamUp Social Play 🎾
           </DialogTitle>
-          <DialogDescription className="text-center text-base">
+          <DialogDescription className="text-center text-sm sm:text-base">
             Smart team rotation & scoring for racket sports tournaments
           </DialogDescription>
         </DialogHeader>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-2 gap-3 py-4">
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-            <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 py-3">
+          <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-sm">Auto Rotation 🔄</div>
-              <div className="text-xs text-muted-foreground">Fair team assignment</div>
+              <div className="font-semibold text-xs sm:text-sm">Auto Rotation 🔄</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Fair team assignment</div>
             </div>
           </div>
           
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/5 border border-accent/10">
-            <BarChart3 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-accent/5 border border-accent/10">
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-accent flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-sm">Live Scores 📊</div>
-              <div className="text-xs text-muted-foreground">Real-time tracking</div>
+              <div className="font-semibold text-xs sm:text-sm">Live Scores 📊</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Real-time tracking</div>
             </div>
           </div>
 
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-            <Users className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-sm">Multi-Court 🏟️</div>
-              <div className="text-xs text-muted-foreground">Manage all courts</div>
+              <div className="font-semibold text-xs sm:text-sm">Multi-Court 🏟️</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Manage all courts</div>
             </div>
           </div>
 
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/5 border border-accent/10">
-            <Clock className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-accent/5 border border-accent/10">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-accent flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-sm">Smart Timer ⏱️</div>
-              <div className="text-xs text-muted-foreground">Auto scheduling</div>
+              <div className="font-semibold text-xs sm:text-sm">Smart Timer ⏱️</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Auto scheduling</div>
             </div>
           </div>
 
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-            <Trophy className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-sm">Leaderboard 🏆</div>
-              <div className="text-xs text-muted-foreground">Track rankings</div>
+              <div className="font-semibold text-xs sm:text-sm">Leaderboard 🏆</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Track rankings</div>
             </div>
           </div>
 
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/5 border border-accent/10">
-            <Zap className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-accent/5 border border-accent/10">
+            <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-accent flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-sm">No Login ✨</div>
-              <div className="text-xs text-muted-foreground">Instant play</div>
+              <div className="font-semibold text-xs sm:text-sm">No Login ✨</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Instant play</div>
             </div>
           </div>
         </div>
 
         {/* Sports Icons */}
-        <div className="text-center text-sm text-muted-foreground py-2 border-t border-b">Perfect for 🏓Pickleball • 🏸 Badminton • 🎾 Tennis</div>
+        <div className="text-center text-xs sm:text-sm text-muted-foreground py-2 border-t border-b">Perfect for 🏓Pickleball • 🏸 Badminton • 🎾 Tennis</div>
 
         {/* Join/Create Section */}
-        <div className="space-y-4 pt-4">
+        <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4">
           <div className="space-y-2">
-            <Label htmlFor="game-code" className="text-sm font-semibold">Join Existing Game</Label>
+            <Label htmlFor="game-code" className="text-xs sm:text-sm font-semibold">Join Existing Game</Label>
             <div className="flex gap-2">
-              <Input id="game-code" value={gameCode} onChange={e => setGameCode(e.target.value.toUpperCase())} placeholder="Enter 6-char code" maxLength={6} className="flex-1 uppercase font-mono text-lg tracking-wider" />
-              <Button onClick={handleJoin} disabled={gameCode.length !== 6} size="lg">
+              <Input id="game-code" value={gameCode} onChange={e => setGameCode(e.target.value.toUpperCase())} placeholder="Enter 6-char code" maxLength={6} className="flex-1 uppercase font-mono text-base sm:text-lg tracking-wider" />
+              <Button onClick={handleJoin} disabled={gameCode.length !== 6} className="px-4 sm:px-6">
                 Join
               </Button>
             </div>
@@ -119,7 +119,7 @@ export const GameCodeDialog = ({
             </div>
           </div>
 
-          <Button onClick={onCreateGame} className="w-full" variant="default" size="lg">🤝 Create New Game</Button>
+          <Button onClick={onCreateGame} className="w-full" variant="default">🤝 Create New Game</Button>
         </div>
       </DialogContent>
     </Dialog>;
