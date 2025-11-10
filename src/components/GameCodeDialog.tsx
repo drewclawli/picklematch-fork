@@ -32,14 +32,32 @@ export const GameCodeDialog = ({ open, onOpenChange, onJoinGame, onCreateGame }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Join or Create Game</DialogTitle>
-          <DialogDescription>
-            Enter a game code to join an existing game, or create a new one.
+          <DialogTitle className="text-2xl">Welcome to Court Rotations! 🎾</DialogTitle>
+          <DialogDescription className="text-base space-y-2 pt-2">
+            <p className="font-medium text-foreground">Organize pickleball, tennis & badminton games in 60 seconds.</p>
+            <div className="grid grid-cols-2 gap-2 pt-3 text-sm">
+              <div className="flex items-start gap-2">
+                <span className="text-primary">✓</span>
+                <span>Auto player rotation</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-primary">✓</span>
+                <span>Live leaderboards</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-primary">✓</span>
+                <span>Match tracking</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-primary">✓</span>
+                <span>No login required</span>
+              </div>
+            </div>
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 py-4">
           <div className="space-y-3">
-            <Label htmlFor="game-code">Game Code</Label>
+            <Label htmlFor="game-code" className="text-base">Have a game code?</Label>
             <div className="flex gap-2">
               <Input
                 id="game-code"
@@ -64,7 +82,7 @@ export const GameCodeDialog = ({ open, onOpenChange, onJoinGame, onCreateGame }:
             </div>
           </div>
 
-          <Button onClick={onCreateGame} className="w-full" variant="default">
+          <Button onClick={onCreateGame} className="w-full h-12" variant="default">
             Create New Game
           </Button>
         </div>
