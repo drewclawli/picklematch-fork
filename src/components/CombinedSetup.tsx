@@ -6,15 +6,19 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, X, ArrowRight, Link2 } from "lucide-react";
+import { UserPlus, X, ArrowRight, Link2, Plus, LogIn } from "lucide-react";
 import { GameConfig } from "./GameSetup";
 import { toast } from "sonner";
+import { validateGameCode } from "@/lib/validation";
 
 interface CombinedSetupProps {
   onComplete: (playerList: string[], config: GameConfig) => void;
+  onJoinGame?: (gameCode: string) => void;
+  onCreateGame?: () => void;
+  showGameOptions?: boolean;
 }
 
-export const CombinedSetup = ({ onComplete }: CombinedSetupProps) => {
+export const CombinedSetup = ({ onComplete, onJoinGame, onCreateGame, showGameOptions = true }: CombinedSetupProps) => {
   const [players, setPlayers] = useState<string[]>([]);
   const [currentName, setCurrentName] = useState("");
   const [gameDuration, setGameDuration] = useState<5 | 10 | 15>(10);
@@ -22,6 +26,21 @@ export const CombinedSetup = ({ onComplete }: CombinedSetupProps) => {
   const [courts, setCourts] = useState<number>(2);
   const [teammatePairs, setTeammatePairs] = useState<{ player1: string; player2: string }[]>([]);
   const [selectedForPairing, setSelectedForPairing] = useState<string | null>(null);
+  const [gameCodeInput, setGameCodeInput] = useState("");
+
+  const handleJoinGame = () => {
+    const code = gameCodeInput.trim().toUpperCase();
+    const validation = validateGameCode(code);
+    if (!validation.valid) {
+      toast.error(validation.error || "Invalid game code");
+      return;
+    }
+    onJoinGame?.(code);
+  };
+
+  const handleCreateGame = () => {
+    onCreateGame?.();
+  };
 
   const addPlayer = () => {
     const trimmedName = currentName.trim();
@@ -99,6 +118,55 @@ export const CombinedSetup = ({ onComplete }: CombinedSetupProps) => {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-6">Setup Your Game</h2>
       </div>
+
+      {/* Game Options Section */}
+      {showGameOptions && (
+        <Card className="p-6 bg-primary/5 border-primary/20">
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-2">Get Started</h3>
+              <p className="text-sm text-muted-foreground">Create a new game or join an existing one</p>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Join Game */}
+              <div className="space-y-3">
+                <Label htmlFor="join-code" className="text-sm font-medium">Enter Game Code</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="join-code"
+                    value={gameCodeInput}
+                    onChange={(e) => setGameCodeInput(e.target.value.toUpperCase())}
+                    placeholder="6-CHAR CODE"
+                    maxLength={6}
+                    className="uppercase font-mono text-lg tracking-wider"
+                  />
+                  <Button 
+                    onClick={handleJoinGame} 
+                    disabled={gameCodeInput.length !== 6}
+                    size="lg"
+                  >
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Join
+                  </Button>
+                </div>
+              </div>
+
+              {/* Create Game */}
+              <div className="flex items-end">
+                <Button 
+                  onClick={handleCreateGame}
+                  className="w-full h-[52px] text-base font-semibold bg-gradient-to-r from-primary to-accent"
+                  size="lg"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Create New Game
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid md:grid-cols-[1fr_2fr] gap-6">
         {/* Player List and Add Player - Now First */}
