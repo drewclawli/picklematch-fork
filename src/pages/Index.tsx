@@ -548,8 +548,8 @@ Track timers, enter scores, and manage singles/doubles play across all courts si
           {activeSection === "leaderboard" && <div className="flex-1 min-h-0">
               <div className="flex flex-col h-full">
                 <div className="text-center mb-3 flex-shrink-0">
-                  <h2 className="text-2xl font-bold text-foreground mb-2">Leaderboard</h2>
-                  <p className="text-muted-foreground">Player rankings and stats</p>
+                  
+                  
                 </div>
                 {matchScores.size > 0 ? <Leaderboard players={players} matches={matches} matchScores={matchScores} /> : <div className="text-center py-12">
                     <p className="text-muted-foreground">No completed matches yet</p>
