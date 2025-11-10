@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Match } from "@/lib/scheduler";
 import { PlayerMatchGroups } from "@/hooks/use-player-matches";
-import { Clock, MapPin, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Clock, MapPin, Users, ChevronDown, ChevronUp, UserCircle } from "lucide-react";
 import { useState } from "react";
 import { PlayerStatusCard } from "./PlayerStatusCard";
 
@@ -13,6 +13,7 @@ interface MyMatchesViewProps {
   matchScores: Map<string, { team1: number; team2: number }>;
   currentTime: Date;
   allMatches: Match[];
+  onReleaseIdentity?: () => void;
 }
 
 export const MyMatchesView = ({
@@ -21,6 +22,7 @@ export const MyMatchesView = ({
   matchScores,
   currentTime,
   allMatches,
+  onReleaseIdentity,
 }: MyMatchesViewProps) => {
   const [showLater, setShowLater] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -136,6 +138,25 @@ export const MyMatchesView = ({
 
   return (
     <div className="space-y-4">
+      {/* Header with Organizer View Button */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <UserCircle className="h-5 w-5 text-primary" />
+          <span className="text-sm font-medium">
+            Playing as: <span className="text-primary font-bold">{playerName}</span>
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReleaseIdentity}
+          className="gap-2"
+        >
+          <Users className="h-4 w-4" />
+          Organizer View
+        </Button>
+      </div>
+
       {/* Status Card */}
       <PlayerStatusCard
         playerName={playerName}
