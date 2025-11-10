@@ -479,38 +479,12 @@ const Index = () => {
             </div>}
           
           {activeSection === "matches" && gameConfig && matches.length > 0 && <div className="flex flex-col h-full min-h-0">
-              {/* View Toggle Header */}
-              <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  {isPlayerView && playerName ? <>
-                      <UserCircle className="h-5 w-5 text-primary" />
-                      <span className="text-sm font-medium">Playing as: <span className="text-primary font-bold">{playerName}</span></span>
-                    </> : <>
-                      <Users className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium text-muted-foreground">Organizer View</span>
-                    </>}
-                </div>
-                <Button variant={isPlayerView ? "outline" : "default"} size="sm" onClick={() => {
-              if (isPlayerView) {
-                releaseIdentity();
-                toast.success("Switched to organizer view");
-              } else {
-                setShowPlayerIdentitySelector(true);
-              }
-            }} className="gap-2">
-                  {isPlayerView ? <>
-                      <Users className="h-4 w-4" />
-                      Organizer View
-                    </> : <>
-                      <UserCircle className="h-4 w-4" />
-                      Player View
-                    </>}
-                </Button>
-              </div>
-
               {/* Conditional View Rendering */}
               <div className="flex-1 min-h-0 overflow-y-auto">
-                {isPlayerView && playerName ? <MyMatchesView playerName={playerName} matchGroups={playerMatches} matchScores={matchScores} currentTime={currentTime} allMatches={matches} /> : <ScheduleView matches={matches} onBack={resetApp} gameConfig={gameConfig} allPlayers={players} onScheduleUpdate={handleScheduleUpdate} matchScores={matchScores} onMatchScoresUpdate={setMatchScores} onCourtConfigUpdate={handleCourtConfigUpdate} />}
+                {isPlayerView && playerName ? <MyMatchesView playerName={playerName} matchGroups={playerMatches} matchScores={matchScores} currentTime={currentTime} allMatches={matches} /> : <ScheduleView matches={matches} onBack={resetApp} gameConfig={gameConfig} allPlayers={players} onScheduleUpdate={handleScheduleUpdate} matchScores={matchScores} onMatchScoresUpdate={setMatchScores} onCourtConfigUpdate={handleCourtConfigUpdate} isPlayerView={isPlayerView} playerName={playerName} onReleaseIdentity={() => {
+                releaseIdentity();
+                toast.success("Switched to organizer view");
+              }} onShowPlayerSelector={() => setShowPlayerIdentitySelector(true)} />}
               </div>
             </div>}
 

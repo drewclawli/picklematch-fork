@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Timer } from "lucide-react";
+import { ArrowLeft, Clock, Users, Trophy, ChevronLeft, ChevronRight, Target, Timer, UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { validateMatchScore } from "@/lib/validation";
 import { useStopwatch } from "@/hooks/use-stopwatch";
@@ -35,6 +35,10 @@ interface ScheduleViewProps {
     team2: number;
   }>) => void;
   onCourtConfigUpdate?: (configs: CourtConfig[]) => void;
+  isPlayerView?: boolean;
+  playerName?: string;
+  onReleaseIdentity?: () => void;
+  onShowPlayerSelector?: () => void;
 }
 export const ScheduleView = ({
   matches,
@@ -44,7 +48,11 @@ export const ScheduleView = ({
   onScheduleUpdate,
   matchScores,
   onMatchScoresUpdate,
-  onCourtConfigUpdate
+  onCourtConfigUpdate,
+  isPlayerView = false,
+  playerName,
+  onReleaseIdentity,
+  onShowPlayerSelector
 }: ScheduleViewProps) => {
   const {
     toast
@@ -712,14 +720,41 @@ export const ScheduleView = ({
   return <div className="h-full overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-1 border-b mb-2">
-        <div className="flex items-center gap-2 px-2 pt-1">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-            <Trophy className="w-3.5 h-3.5 text-primary-foreground" />
+        <div className="flex items-center justify-between gap-2 px-2 pt-1">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+              <Trophy className="w-3.5 h-3.5 text-primary-foreground" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-base font-bold text-foreground">Match Schedule</h2>
+              <p className="text-[10px] text-muted-foreground">{matches.length} matches • {allPlayers.length} players</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h2 className="text-base font-bold text-foreground">Match Schedule</h2>
-            <p className="text-[10px] text-muted-foreground">{matches.length} matches • {allPlayers.length} players</p>
-          </div>
+          
+          <Button 
+            variant={isPlayerView ? "outline" : "default"} 
+            size="sm" 
+            onClick={() => {
+              if (isPlayerView) {
+                onReleaseIdentity?.();
+              } else {
+                onShowPlayerSelector?.();
+              }
+            }} 
+            className="gap-2 flex-shrink-0"
+          >
+            {isPlayerView ? (
+              <>
+                <Users className="h-4 w-4" />
+                Organizer View
+              </>
+            ) : (
+              <>
+                <UserCircle className="h-4 w-4" />
+                Player View
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
