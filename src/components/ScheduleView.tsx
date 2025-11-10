@@ -710,6 +710,59 @@ export const ScheduleView = ({
   //   checkPlayerConflicts(matchScores);
   // }, []);
 
+  // Player View
+  if (currentView === 'player') {
+    return <div className="h-full overflow-y-auto">
+      <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-1 border-b mb-2">
+        <div className="flex items-center justify-between gap-2 px-2 pt-1">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+              <Users className="w-3.5 h-3.5 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-foreground">Player View</h2>
+              <p className="text-[10px] text-muted-foreground">Select a player to view their matches</p>
+            </div>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentView('organizer')}
+            className="h-8 text-xs px-3 gap-1.5"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back
+          </Button>
+        </div>
+      </div>
+
+      <div className="px-2 space-y-2">
+        {allPlayers.map(player => {
+          const playerMatches = matches.filter(m => 
+            m.team1.includes(player) || m.team2.includes(player)
+          );
+          const completedMatches = playerMatches.filter(m => matchScores.has(m.id)).length;
+          const upcomingMatches = playerMatches.length - completedMatches;
+          
+          return (
+            <Card key={player} className="p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-sm">{player}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {playerMatches.length} matches • {completedMatches} played • {upcomingMatches} upcoming
+                  </p>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>;
+  }
+
+  // Organizer View
   return <div className="h-full overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-1 border-b mb-2">
