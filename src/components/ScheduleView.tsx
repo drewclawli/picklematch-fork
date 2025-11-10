@@ -725,13 +725,13 @@ export const ScheduleView = ({
           </div>
           
           <Button
-            variant={currentView === 'organizer' ? 'default' : 'outline'}
+            variant="outline"
             size="sm"
-            onClick={() => setCurrentView(currentView === 'organizer' ? 'player' : 'organizer')}
+            onClick={() => setCurrentView('player')}
             className="h-8 text-xs px-3 gap-1.5"
           >
             <Users className="w-3.5 h-3.5" />
-            {currentView === 'organizer' ? 'Organizer View' : 'Player View'}
+            Player View
           </Button>
         </div>
       </div>
