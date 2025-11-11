@@ -327,7 +327,9 @@ const Index = () => {
           gameConfig.gameDuration,
           gameConfig.courts,
           gameConfig.schedulingType,
-          gameConfig.courtConfigs || []
+          gameConfig.courtConfigs || [],
+          teammatePairs || [],
+          gameConfig.tournamentPlayStyle === 'singles'
         );
         
         // Process bye matches

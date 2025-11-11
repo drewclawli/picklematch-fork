@@ -8,50 +8,108 @@ export function generateTournamentSchedule(
   gameDuration: number,
   courts: number,
   schedulingType: 'single-elimination' | 'double-elimination',
-  courtConfigs: CourtConfig[]
+  courtConfigs: CourtConfig[],
+  teammatePairs: Array<{ player1: string; player2: string }> = [],
+  isSingles: boolean = false
 ): Match[] {
-  // Validate player count (4-16 players)
+  // For doubles tournaments, validate we have teams (pairs)
+  if (!isSingles) {
+    // Convert players to teams (pairs)
+    const teams = createTeamsFromPlayers(players, teammatePairs);
+    
+    // Validate team count (4-16 teams)
+    if (teams.length < 4 || teams.length > 16) {
+      throw new Error('Tournament requires 4-16 teams (pairs)');
+    }
+
+    if (schedulingType === 'single-elimination') {
+      return generateSingleEliminationBracket(teams, gameDuration, courts, courtConfigs, false);
+    } else {
+      return generateDoubleEliminationBracket(teams, gameDuration, courts, courtConfigs, false);
+    }
+  }
+
+  // For singles tournaments, validate player count
   if (players.length < 4 || players.length > 16) {
     throw new Error('Tournament requires 4-16 players');
   }
 
   if (schedulingType === 'single-elimination') {
-    return generateSingleEliminationBracket(players, gameDuration, courts, courtConfigs);
+    return generateSingleEliminationBracket(players.map(p => [p]), gameDuration, courts, courtConfigs, true);
   } else {
-    return generateDoubleEliminationBracket(players, gameDuration, courts, courtConfigs);
+    return generateDoubleEliminationBracket(players.map(p => [p]), gameDuration, courts, courtConfigs, true);
   }
+}
+
+/**
+ * Create teams from players and pairs
+ * Unpaired players will be randomly paired
+ */
+function createTeamsFromPlayers(
+  players: string[],
+  teammatePairs: Array<{ player1: string; player2: string }>
+): string[][] {
+  const teams: string[][] = [];
+  const pairedPlayers = new Set<string>();
+  
+  // Add existing pairs as teams
+  teammatePairs.forEach(pair => {
+    if (players.includes(pair.player1) && players.includes(pair.player2)) {
+      teams.push([pair.player1, pair.player2]);
+      pairedPlayers.add(pair.player1);
+      pairedPlayers.add(pair.player2);
+    }
+  });
+  
+  // Collect unpaired players
+  const unpairedPlayers = players.filter(p => !pairedPlayers.has(p));
+  
+  // Randomly pair unpaired players
+  const shuffled = [...unpairedPlayers].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < shuffled.length; i += 2) {
+    if (i + 1 < shuffled.length) {
+      teams.push([shuffled[i], shuffled[i + 1]]);
+    } else {
+      // Odd player out - create a single-player "team"
+      teams.push([shuffled[i]]);
+    }
+  }
+  
+  return teams;
 }
 
 /**
  * Generate single elimination bracket
  */
 function generateSingleEliminationBracket(
-  players: string[],
+  teams: string[][],
   gameDuration: number,
   courts: number,
-  courtConfigs: CourtConfig[]
+  courtConfigs: CourtConfig[],
+  isSingles: boolean
 ): Match[] {
-  const bracketSize = calculateBracketSize(players.length);
-  const seededPlayers = seedPlayers(players, bracketSize);
-  const structure = createSingleEliminationStructure(bracketSize, gameDuration, courts, courtConfigs);
+  const bracketSize = calculateBracketSize(teams.length);
+  const seededTeams = seedPlayers(teams, bracketSize);
+  const structure = createSingleEliminationStructure(bracketSize, gameDuration, courts, courtConfigs, isSingles);
   
-  return assignInitialPlayers(structure, seededPlayers);
+  return assignInitialPlayers(structure, seededTeams);
 }
 
 /**
  * Generate double elimination bracket
  */
 function generateDoubleEliminationBracket(
-  players: string[],
+  teams: string[][],
   gameDuration: number,
   courts: number,
-  courtConfigs: CourtConfig[]
+  courtConfigs: CourtConfig[],
+  isSingles: boolean
 ): Match[] {
-  const bracketSize = calculateBracketSize(players.length);
-  const seededPlayers = seedPlayers(players, bracketSize);
-  const structure = createDoubleEliminationStructure(bracketSize, gameDuration, courts, courtConfigs);
+  const bracketSize = calculateBracketSize(teams.length);
+  const seededTeams = seedPlayers(teams, bracketSize);
+  const structure = createDoubleEliminationStructure(bracketSize, gameDuration, courts, courtConfigs, isSingles);
   
-  return assignInitialPlayers(structure, seededPlayers);
+  return assignInitialPlayers(structure, seededTeams);
 }
 
 /**
@@ -64,16 +122,16 @@ function calculateBracketSize(playerCount: number): number {
 }
 
 /**
- * Seed players (1, 2, 3... with byes if needed)
+ * Seed players/teams (1, 2, 3... with byes if needed)
  */
-function seedPlayers(players: string[], bracketSize: number): Array<string | null> {
-  const seeded: Array<string | null> = new Array(bracketSize).fill(null);
+function seedPlayers(teams: string[][], bracketSize: number): Array<string[] | null> {
+  const seeded: Array<string[] | null> = new Array(bracketSize).fill(null);
   
   // Standard bracket seeding order (1 vs 16, 8 vs 9, etc.)
   const seedOrder = generateSeedOrder(bracketSize);
   
-  for (let i = 0; i < players.length; i++) {
-    seeded[seedOrder[i]] = players[i];
+  for (let i = 0; i < teams.length; i++) {
+    seeded[seedOrder[i]] = teams[i];
   }
   
   return seeded;
@@ -96,7 +154,8 @@ function createSingleEliminationStructure(
   bracketSize: number,
   gameDuration: number,
   courts: number,
-  courtConfigs: CourtConfig[]
+  courtConfigs: CourtConfig[],
+  isSingles: boolean
 ): Match[] {
   const matches: Match[] = [];
   const rounds = Math.log2(bracketSize);
@@ -144,10 +203,10 @@ function createSingleEliminationStructure(
         court: courtConfig.courtNumber,
         startTime: currentTime,
         endTime: currentTime + gameDuration,
-        team1: ['TBD'] as [string],
-        team2: ['TBD'] as [string],
+        team1: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
+        team2: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
         status: round === 1 ? 'scheduled' : 'waiting',
-        isSingles: courtConfig.type === 'singles',
+        isSingles: isSingles,
         isLocked: false,
         tournamentMetadata: metadata,
       });
@@ -178,7 +237,8 @@ function createDoubleEliminationStructure(
   bracketSize: number,
   gameDuration: number,
   courts: number,
-  courtConfigs: CourtConfig[]
+  courtConfigs: CourtConfig[],
+  isSingles: boolean
 ): Match[] {
   const winnersMatches: Match[] = [];
   const losersMatches: Match[] = [];
@@ -243,10 +303,10 @@ function createDoubleEliminationStructure(
         court: courtConfig.courtNumber,
         startTime: currentTime,
         endTime: currentTime + gameDuration,
-        team1: ['TBD'] as [string],
-        team2: ['TBD'] as [string],
+        team1: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
+        team2: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
         status: round === 1 ? 'scheduled' : 'waiting',
-        isSingles: courtConfig.type === 'singles',
+        isSingles: isSingles,
         isLocked: false,
         tournamentMetadata: metadata,
       });
@@ -297,10 +357,10 @@ function createDoubleEliminationStructure(
         court: courtConfig.courtNumber,
         startTime: currentTime,
         endTime: currentTime + gameDuration,
-        team1: ['TBD'] as [string],
-        team2: ['TBD'] as [string],
+        team1: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
+        team2: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
         status: 'waiting',
-        isSingles: courtConfig.type === 'singles',
+        isSingles: isSingles,
         isLocked: false,
         tournamentMetadata: metadata,
       });
@@ -324,10 +384,10 @@ function createDoubleEliminationStructure(
     court: courtConfig.courtNumber,
     startTime: currentTime,
     endTime: currentTime + gameDuration,
-    team1: ['TBD'] as [string],
-    team2: ['TBD'] as [string],
+    team1: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
+    team2: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
     status: 'waiting',
-    isSingles: courtConfig.type === 'singles',
+    isSingles: isSingles,
     isLocked: false,
     tournamentMetadata: {
       bracketType: 'finals',
@@ -347,10 +407,10 @@ function createDoubleEliminationStructure(
     court: courtConfig.courtNumber,
     startTime: currentTime,
     endTime: currentTime + gameDuration,
-    team1: ['TBD'] as [string],
-    team2: ['TBD'] as [string],
+    team1: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
+    team2: isSingles ? ['TBD'] as [string] : ['TBD', 'TBD'] as [string, string],
     status: 'waiting',
-    isSingles: courtConfig.type === 'singles',
+    isSingles: isSingles,
     isLocked: false,
     tournamentMetadata: {
       bracketType: 'grand-finals',
@@ -366,38 +426,41 @@ function createDoubleEliminationStructure(
 /**
  * Assign initial players to Round 1 matches
  */
-function assignInitialPlayers(matches: Match[], seededPlayers: Array<string | null>): Match[] {
+function assignInitialPlayers(matches: Match[], seededTeams: Array<string[] | null>): Match[] {
   return matches.map(match => {
     if (match.tournamentMetadata?.round === 1) {
       const seed1 = match.tournamentMetadata.seed1;
       const seed2 = match.tournamentMetadata.seed2;
       
       if (seed1 !== undefined && seed2 !== undefined) {
-        const player1 = seededPlayers[seed1 - 1];
-        const player2 = seededPlayers[seed2 - 1];
+        const team1 = seededTeams[seed1 - 1];
+        const team2 = seededTeams[seed2 - 1];
         
         // Handle byes
-        if (!player1 && !player2) {
+        if (!team1 && !team2) {
           return { ...match, status: 'bye' as const };
-        } else if (!player1) {
+        } else if (!team1) {
+          // Team 2 gets a bye
           return {
             ...match,
-            team1: [player2!] as [string],
-            team2: [player2!] as [string],
+            team1: match.isSingles ? [team2![0]] as [string] : [team2![0], team2![1]] as [string, string],
+            team2: match.isSingles ? [team2![0]] as [string] : [team2![0], team2![1]] as [string, string],
             status: 'bye' as const,
           };
-        } else if (!player2) {
+        } else if (!team2) {
+          // Team 1 gets a bye
           return {
             ...match,
-            team1: [player1] as [string],
-            team2: [player1] as [string],
+            team1: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1]] as [string, string],
+            team2: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1]] as [string, string],
             status: 'bye' as const,
           };
         } else {
+          // Normal match
           return {
             ...match,
-            team1: [player1] as [string],
-            team2: [player2] as [string],
+            team1: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1]] as [string, string],
+            team2: match.isSingles ? [team2[0]] as [string] : [team2[0], team2[1]] as [string, string],
             status: 'scheduled' as const,
           };
         }

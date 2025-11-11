@@ -28,6 +28,7 @@ export interface GameConfig {
   }[];
   courtConfigs?: CourtConfig[];
   schedulingType?: 'round-robin' | 'single-elimination' | 'double-elimination';
+  tournamentPlayStyle?: 'singles' | 'doubles';
 }
 export const GameSetup = ({
   playerCount = 4,
@@ -40,6 +41,7 @@ export const GameSetup = ({
   const [totalTime, setTotalTime] = useState<number>(60);
   const [courts, setCourts] = useState<number>(2);
   const [schedulingType, setSchedulingType] = useState<'round-robin' | 'single-elimination' | 'double-elimination'>('round-robin');
+  const [tournamentPlayStyle, setTournamentPlayStyle] = useState<'singles' | 'doubles'>('doubles');
   const [courtConfigs, setCourtConfigs] = useState<CourtConfig[]>(Array.from({
     length: 2
   }, (_, i) => ({
@@ -75,7 +77,8 @@ export const GameSetup = ({
       totalTime,
       courts,
       courtConfigs,
-      schedulingType
+      schedulingType,
+      tournamentPlayStyle: schedulingType !== 'round-robin' ? tournamentPlayStyle : undefined
     });
   };
   const handleCopy = () => {
@@ -195,11 +198,32 @@ export const GameSetup = ({
           <Alert variant="destructive" className="mt-2">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-xs">
-              Tournament mode requires 4-16 players. Please adjust player count.
+              Tournament mode requires 4-16 {tournamentPlayStyle === 'singles' ? 'players' : 'teams (pairs)'}. Please adjust player count.
             </AlertDescription>
           </Alert>
         )}
       </div>
+
+      {/* Tournament Play Style - Only show for tournament modes */}
+      {schedulingType !== 'round-robin' && (
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Tournament Play Style</Label>
+          <RadioGroup value={tournamentPlayStyle} onValueChange={(v) => setTournamentPlayStyle(v as 'singles' | 'doubles')}>
+            <div className="grid grid-cols-2 gap-2">
+              <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${tournamentPlayStyle === 'singles' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
+                <RadioGroupItem value="singles" className="sr-only" />
+                <span className="text-sm font-bold">Singles</span>
+                <p className="text-xs text-muted-foreground text-center mt-1">Individual players</p>
+              </label>
+              <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${tournamentPlayStyle === 'doubles' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
+                <RadioGroupItem value="doubles" className="sr-only" />
+                <span className="text-sm font-bold">Doubles</span>
+                <p className="text-xs text-muted-foreground text-center mt-1">Paired teams</p>
+              </label>
+            </div>
+          </RadioGroup>
+        </div>
+      )}
 
       {/* Form Layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
