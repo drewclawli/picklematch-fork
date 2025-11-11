@@ -45,20 +45,22 @@ export function TournamentBracketView({
   if (actualIsQualifierMode) {
     return (
       <Tabs defaultValue="qualifier" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="qualifier">
-            <Users className="w-4 h-4 mr-2" />
-            Qualifier Stage
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="qualifier" className="text-xs sm:text-sm py-2">
+            <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Qualifier Stage</span>
+            <span className="xs:hidden">Qualifier</span>
           </TabsTrigger>
-          <TabsTrigger value="knockout">
-            <Trophy className="w-4 h-4 mr-2" />
-            Knockout Bracket
+          <TabsTrigger value="knockout" className="text-xs sm:text-sm py-2">
+            <Trophy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Knockout Bracket</span>
+            <span className="xs:hidden">Knockout</span>
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="qualifier" className="mt-4">
+        <TabsContent value="qualifier" className="mt-3 sm:mt-4">
           <QualifierStageViewInternal matches={qualifierMatches} matchScores={matchScores} />
         </TabsContent>
-        <TabsContent value="knockout" className="mt-4">
+        <TabsContent value="knockout" className="mt-3 sm:mt-4">
           <BracketViewInternal matches={knockoutMatches} matchScores={matchScores} allPlayers={allPlayers} />
         </TabsContent>
       </Tabs>
@@ -162,73 +164,75 @@ function BracketViewInternal({
     const sortedRounds = Array.from(roundsMap.keys()).sort((a, b) => a - b);
 
     return (
-      <div key={bracketType} className="mb-8">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Trophy className="w-5 h-5" />
-          {bracketType === 'winners' && 'Winners Bracket'}
-          {bracketType === 'losers' && 'Losers Bracket'}
-          {bracketType === 'finals' && 'Finals'}
-          {bracketType === 'grand-finals' && 'Grand Finals'}
+      <div key={bracketType} className="mb-6 sm:mb-8">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2 px-1">
+          <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="truncate">
+            {bracketType === 'winners' && 'Winners Bracket'}
+            {bracketType === 'losers' && 'Losers Bracket'}
+            {bracketType === 'finals' && 'Finals'}
+            {bracketType === 'grand-finals' && 'Grand Finals'}
+          </span>
         </h3>
 
         {isMobile ? (
-          <Carousel 
-            className="w-full"
-            opts={{
-              align: "start",
-              loop: false,
-              dragFree: false,
-            }}
-          >
-            <CarouselContent className="-ml-2 md:-ml-4">
-              {sortedRounds.map((roundNum) => {
-                const roundMatches = roundsMap.get(roundNum) || [];
-                const roundName =
-                  roundMatches[0]?.tournamentMetadata?.roundName || `Round ${roundNum}`;
+          <div className="relative px-1">
+            <Carousel 
+              className="w-full"
+              opts={{
+                align: "start",
+                loop: false,
+                dragFree: false,
+              }}
+            >
+              <CarouselContent className="-ml-1">
+                {sortedRounds.map((roundNum) => {
+                  const roundMatches = roundsMap.get(roundNum) || [];
+                  const roundName =
+                    roundMatches[0]?.tournamentMetadata?.roundName || `Round ${roundNum}`;
 
-                return (
-                  <CarouselItem key={roundNum} className="pl-2 md:pl-4 basis-full">
-                    <div className="flex flex-col h-[calc(100vh-240px)]">
-                      <h4 className="text-center font-semibold text-sm bg-primary/5 py-2 rounded-lg border mb-3 flex-shrink-0">
-                        {roundName}
-                      </h4>
+                  return (
+                    <CarouselItem key={roundNum} className="pl-1 basis-full">
+                      <div className="flex flex-col min-h-[50vh] max-h-[70vh]">
+                        <h4 className="text-center font-semibold text-xs sm:text-sm bg-primary/5 py-2 px-2 rounded-lg border mb-2 flex-shrink-0">
+                          {roundName}
+                        </h4>
 
-                      <div className="flex-1 flex flex-col justify-center gap-2 overflow-y-auto py-2">
-                        {roundMatches.map((match) => (
-                          <MatchBracketCard
-                            key={match.id}
-                            match={match}
-                            score={matchScores.get(match.id)}
-                            allMatches={matches}
-                            getPlayerLabel={getPlayerLabel}
-                            isMobile={true}
-                          />
-                        ))}
+                        <div className="flex-1 flex flex-col justify-start gap-2 overflow-y-auto py-1 px-1">
+                          {roundMatches.map((match) => (
+                            <MatchBracketCard
+                              key={match.id}
+                              match={match}
+                              score={matchScores.get(match.id)}
+                              allMatches={matches}
+                              getPlayerLabel={getPlayerLabel}
+                              isMobile={true}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </CarouselItem>
-                );
-              })}
-            </CarouselContent>
-            <div className="hidden sm:block">
-              <CarouselPrevious />
-              <CarouselNext />
-            </div>
-          </Carousel>
+                    </CarouselItem>
+                  );
+                })}
+              </CarouselContent>
+              <CarouselPrevious className="left-0 -translate-x-1/2 h-8 w-8 sm:h-10 sm:w-10" />
+              <CarouselNext className="right-0 translate-x-1/2 h-8 w-8 sm:h-10 sm:w-10" />
+            </Carousel>
+          </div>
         ) : (
-          <div className="flex gap-8 overflow-x-auto pb-4">
+          <div className="flex gap-6 lg:gap-8 overflow-x-auto pb-4 px-1">
             {sortedRounds.map((roundNum) => {
               const roundMatches = roundsMap.get(roundNum) || [];
               const roundName =
                 roundMatches[0]?.tournamentMetadata?.roundName || `Round ${roundNum}`;
 
               return (
-                <div key={roundNum} className="flex flex-col gap-4 min-w-[250px]">
+                <div key={roundNum} className="flex flex-col gap-4 min-w-[220px] lg:min-w-[250px]">
                   <h4 className="text-center font-semibold text-sm sticky top-0 bg-background py-2 border-b">
                     {roundName}
                   </h4>
 
-                  <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-4 lg:gap-6">
                     {roundMatches.map((match) => (
                       <MatchBracketCard
                         key={match.id}
@@ -276,7 +280,7 @@ function MatchBracketCard({ match, score, allMatches, getPlayerLabel, isMobile =
     <Card
       className={cn(
         'transition-all shadow-sm',
-        isMobile ? 'p-2' : 'p-4',
+        isMobile ? 'p-2' : 'p-3 sm:p-4',
         match.status === 'completed' && 'bg-green-50 dark:bg-green-950/20 border-green-500/50',
         match.status === 'in-progress' && 'bg-blue-50 dark:bg-blue-950/20 border-blue-500/50',
         match.status === 'scheduled' && 'border-primary/50',
@@ -287,15 +291,22 @@ function MatchBracketCard({ match, score, allMatches, getPlayerLabel, isMobile =
       <div className={cn("space-y-2", isMobile && "space-y-1.5")}>
         {/* Team 1 */}
         <div className={cn(
-          "flex justify-between items-center rounded",
-          isMobile ? "px-2 py-1" : "px-3 py-2",
+          "flex justify-between items-center rounded min-w-0",
+          isMobile ? "px-2 py-1.5" : "px-3 py-2",
           isTeam1Winner && "bg-primary/10 font-bold"
         )}>
-          <span className={cn("truncate flex-1", isMobile ? "text-xs" : "text-sm sm:text-base")}>
+          <span className={cn(
+            "truncate flex-1 min-w-0", 
+            isMobile ? "text-xs" : "text-sm sm:text-base"
+          )} title={team1Label}>
             {team1Label}
           </span>
           {score && (
-            <span className={cn("ml-2 font-bold", isMobile ? "text-sm" : "text-base", isTeam1Winner && "text-primary")}>
+            <span className={cn(
+              "ml-2 font-bold flex-shrink-0", 
+              isMobile ? "text-sm" : "text-base", 
+              isTeam1Winner && "text-primary"
+            )}>
               {score.team1}
             </span>
           )}
@@ -305,15 +316,22 @@ function MatchBracketCard({ match, score, allMatches, getPlayerLabel, isMobile =
 
         {/* Team 2 */}
         <div className={cn(
-          "flex justify-between items-center rounded",
-          isMobile ? "px-2 py-1" : "px-3 py-2",
+          "flex justify-between items-center rounded min-w-0",
+          isMobile ? "px-2 py-1.5" : "px-3 py-2",
           isTeam2Winner && "bg-primary/10 font-bold"
         )}>
-          <span className={cn("truncate flex-1", isMobile ? "text-xs" : "text-sm sm:text-base")}>
+          <span className={cn(
+            "truncate flex-1 min-w-0", 
+            isMobile ? "text-xs" : "text-sm sm:text-base"
+          )} title={team2Label}>
             {team2Label}
           </span>
           {score && (
-            <span className={cn("ml-2 font-bold", isMobile ? "text-sm" : "text-base", isTeam2Winner && "text-primary")}>
+            <span className={cn(
+              "ml-2 font-bold flex-shrink-0", 
+              isMobile ? "text-sm" : "text-base", 
+              isTeam2Winner && "text-primary"
+            )}>
               {score.team2}
             </span>
           )}
@@ -321,16 +339,16 @@ function MatchBracketCard({ match, score, allMatches, getPlayerLabel, isMobile =
 
         {/* Match info */}
         <div className={cn(
-          "text-xs text-muted-foreground flex justify-between items-center border-t",
+          "text-xs text-muted-foreground flex justify-between items-center border-t gap-2",
           isMobile ? "pt-1" : "pt-2"
         )}>
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1 min-w-0 flex-shrink-0">
             <Clock className={cn(isMobile ? "w-3 h-3" : "w-3.5 h-3.5")} />
-            <span className={cn(isMobile && "text-[10px]")}>Court {match.court}</span>
+            <span className={cn(isMobile && "text-[10px]")}>C{match.court}</span>
           </span>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-shrink-0">
             {!isMobile && match.tournamentMetadata?.bracketPosition && (
-              <Badge variant="outline" className="text-xs h-5 px-2">
+              <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                 {match.tournamentMetadata.bracketPosition}
               </Badge>
             )}
