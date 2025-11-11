@@ -42,8 +42,20 @@ export function TournamentBracketView({
   }, [matches]);
 
   const getPlayerLabel = (match: Match, slot: 'team1' | 'team2'): string => {
-    const player = match[slot][0];
-    if (player !== 'TBD') return player;
+    const team = match[slot];
+    const player = team[0];
+    
+    if (player !== 'TBD') {
+      // For doubles, show both players
+      if (!match.isSingles && team.length === 2) {
+        // Don't show duplicate if both players are the same (odd player out scenario)
+        if (team[0] === team[1]) {
+          return `${team[0]} (needs partner)`;
+        }
+        return `${team[0]} / ${team[1]}`;
+      }
+      return player;
+    }
 
     const metadata = match.tournamentMetadata;
     if (!metadata) return 'TBD';

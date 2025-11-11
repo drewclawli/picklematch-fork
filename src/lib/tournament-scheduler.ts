@@ -44,6 +44,7 @@ export function generateTournamentSchedule(
 /**
  * Create teams from players and pairs
  * Unpaired players will be randomly paired
+ * For doubles, ensures all teams have exactly 2 players
  */
 function createTeamsFromPlayers(
   players: string[],
@@ -70,8 +71,9 @@ function createTeamsFromPlayers(
     if (i + 1 < shuffled.length) {
       teams.push([shuffled[i], shuffled[i + 1]]);
     } else {
-      // Odd player out - create a single-player "team"
-      teams.push([shuffled[i]]);
+      // Odd player out - pair with themselves (will need a substitute)
+      // In a real tournament, this would be flagged for organizer attention
+      teams.push([shuffled[i], shuffled[i]]);
     }
   }
   
@@ -443,24 +445,24 @@ function assignInitialPlayers(matches: Match[], seededTeams: Array<string[] | nu
           // Team 2 gets a bye
           return {
             ...match,
-            team1: match.isSingles ? [team2![0]] as [string] : [team2![0], team2![1]] as [string, string],
-            team2: match.isSingles ? [team2![0]] as [string] : [team2![0], team2![1]] as [string, string],
+            team1: match.isSingles ? [team2![0]] as [string] : [team2![0], team2![1] || team2![0]] as [string, string],
+            team2: match.isSingles ? [team2![0]] as [string] : [team2![0], team2![1] || team2![0]] as [string, string],
             status: 'bye' as const,
           };
         } else if (!team2) {
           // Team 1 gets a bye
           return {
             ...match,
-            team1: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1]] as [string, string],
-            team2: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1]] as [string, string],
+            team1: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1] || team1[0]] as [string, string],
+            team2: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1] || team1[0]] as [string, string],
             status: 'bye' as const,
           };
         } else {
           // Normal match
           return {
             ...match,
-            team1: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1]] as [string, string],
-            team2: match.isSingles ? [team2[0]] as [string] : [team2[0], team2[1]] as [string, string],
+            team1: match.isSingles ? [team1[0]] as [string] : [team1[0], team1[1] || team1[0]] as [string, string],
+            team2: match.isSingles ? [team2[0]] as [string] : [team2[0], team2[1] || team2[0]] as [string, string],
             status: 'scheduled' as const,
           };
         }

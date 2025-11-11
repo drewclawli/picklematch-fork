@@ -12,9 +12,11 @@ export function advanceWinnerToNextMatch(
     return allMatches;
   }
 
-  const winnerName = completedMatch[winner][0];
-  const loserName = winner === 'team1' ? completedMatch.team2[0] : completedMatch.team1[0];
+  // Get the full winning team (both players for doubles)
+  const winningTeam = completedMatch[winner];
+  const losingTeam = winner === 'team1' ? completedMatch.team2 : completedMatch.team1;
   const metadata = completedMatch.tournamentMetadata;
+  const isSingles = completedMatch.isSingles;
 
   let updatedMatches = [...allMatches];
 
@@ -24,7 +26,9 @@ export function advanceWinnerToNextMatch(
       if (match.id === metadata.advancesTo) {
         const newMatch = {
           ...match,
-          [metadata.advancesToSlot!]: [winnerName] as [string],
+          [metadata.advancesToSlot!]: isSingles 
+            ? [winningTeam[0]] as [string]
+            : [winningTeam[0], winningTeam[1] || winningTeam[0]] as [string, string],
         };
 
         // Check if both slots are filled to update status
@@ -44,7 +48,9 @@ export function advanceWinnerToNextMatch(
       if (match.id === metadata.loserAdvancesTo) {
         const newMatch = {
           ...match,
-          [metadata.loserAdvancesToSlot!]: [loserName] as [string],
+          [metadata.loserAdvancesToSlot!]: isSingles
+            ? [losingTeam[0]] as [string]
+            : [losingTeam[0], losingTeam[1] || losingTeam[0]] as [string, string],
         };
 
         // Check if both slots are filled to update status
@@ -99,10 +105,10 @@ export function processByeMatches(matches: Match[]): Match[] {
 
     updatedMatches = updatedMatches.map(match => {
       if (match.status === 'bye' && match.tournamentMetadata) {
-        const byeWinner = match.team1[0];
+        const byeWinningTeam = match.team1;
         const metadata = match.tournamentMetadata;
 
-        if (metadata.advancesTo && metadata.advancesToSlot && byeWinner !== 'TBD') {
+        if (metadata.advancesTo && metadata.advancesToSlot && byeWinningTeam[0] !== 'TBD') {
           // Mark this bye as completed
           hasChanges = true;
           return {
@@ -127,13 +133,16 @@ export function processByeMatches(matches: Match[]): Match[] {
 
         byeMatches.forEach(byeMatch => {
           if (byeMatch.tournamentMetadata) {
-            const byeWinner = byeMatch.team1[0];
+            const byeWinningTeam = byeMatch.team1;
             const slot = byeMatch.tournamentMetadata.advancesToSlot;
+            const isSingles = byeMatch.isSingles;
 
-            if (slot && byeWinner !== 'TBD') {
+            if (slot && byeWinningTeam[0] !== 'TBD') {
               newMatch = {
                 ...newMatch,
-                [slot]: [byeWinner] as [string],
+                [slot]: isSingles
+                  ? [byeWinningTeam[0]] as [string]
+                  : [byeWinningTeam[0], byeWinningTeam[1] || byeWinningTeam[0]] as [string, string],
               };
             }
           }
