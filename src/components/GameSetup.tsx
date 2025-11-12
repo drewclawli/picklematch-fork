@@ -128,8 +128,8 @@ export const GameSetup = ({
         </div>
         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
           Configure your tournament settings including match duration, total play time, and number of courts. 
-          Choose between singles and doubles play for each court to optimize your racket sports tournament 
-          scheduling for pickleball, badminton, or tennis games.
+          Choose between singles and doubles play for each court to optimize your pickleball tournament 
+          scheduling and maximize court rotation efficiency.
         </p>
       </div>
 

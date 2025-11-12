@@ -40,7 +40,7 @@ export const MatchHistory = ({ matches, matchScores }: MatchHistoryProps) => {
         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
           Review all completed matches with final scores, winning teams, and match timing. 
           Perfect for tracking tournament progress, analyzing team performance, and maintaining 
-          a complete record of your pickleball, tennis, or badminton games.
+          a complete record of your pickleball games and tournaments.
         </p>
       </div>
 
