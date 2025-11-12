@@ -531,6 +531,32 @@ const Index = () => {
         <div className="absolute top-20 right-10 w-64 h-64 bg-primary rounded-full blur-3xl"></div>
         <div className="absolute bottom-20 left-10 w-96 h-96 bg-accent rounded-full blur-3xl"></div>
       </div>
+
+      {/* Left Ad Sidebar - Desktop Only */}
+      <div className="hidden xl:block fixed left-2 top-1/2 -translate-y-1/2 w-40 z-20">
+        <ins className="adsbygoogle"
+             style={{ display: 'block' }}
+             data-ad-client="ca-pub-6788044289759238"
+             data-ad-slot="3260817680"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script dangerouslySetInnerHTML={{
+          __html: '(adsbygoogle = window.adsbygoogle || []).push({});'
+        }} />
+      </div>
+
+      {/* Right Ad Sidebar - Desktop Only */}
+      <div className="hidden xl:block fixed right-2 top-1/2 -translate-y-1/2 w-40 z-20">
+        <ins className="adsbygoogle"
+             style={{ display: 'block' }}
+             data-ad-client="ca-pub-6788044289759238"
+             data-ad-slot="3560485991"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script dangerouslySetInnerHTML={{
+          __html: '(adsbygoogle = window.adsbygoogle || []).push({});'
+        }} />
+      </div>
       
       <div className="max-w-5xl mx-auto p-2 sm:p-3 w-full relative z-10 flex flex-col h-full min-h-0">
         <header className="text-center py-2 sm:py-3 flex-shrink-0">
