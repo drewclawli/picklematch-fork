@@ -852,7 +852,7 @@ export const ScheduleView = ({
                     <span className={courtConfig.type === 'doubles' ? 'text-gray-800 font-medium' : 'text-gray-500'}>
                       Doubles
                     </span>
-                    <Switch checked={courtConfig.type === 'singles'} onCheckedChange={() => toggleCourtType(courtConfig.courtNumber)} disabled={matchScores.size > 0} className="scale-75" />
+                    <Switch checked={courtConfig.type === 'singles'} onCheckedChange={() => toggleCourtType(courtConfig.courtNumber)} className="scale-75" />
                     <span className={courtConfig.type === 'singles' ? 'text-gray-800 font-medium' : 'text-gray-500'}>
                       Singles
                     </span>
