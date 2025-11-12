@@ -16,6 +16,7 @@ import { usePlayerIdentity } from "@/hooks/use-player-identity";
 import { usePlayerMatches } from "@/hooks/use-player-matches";
 import { usePlayerNotifications } from "@/hooks/use-player-notifications";
 import { PlayerIdentitySelector } from "@/components/PlayerIdentitySelector";
+import logo from "@/assets/logo.png";
 import { MyMatchesView } from "@/components/MyMatchesView";
 type Section = "setup" | "players" | "matches" | "history" | "leaderboard";
 const Index = () => {
@@ -533,9 +534,9 @@ const Index = () => {
       
       <div className="max-w-5xl mx-auto p-2 sm:p-3 w-full relative z-10 flex flex-col h-full min-h-0">
         <header className="text-center py-2 sm:py-3 flex-shrink-0">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-1 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient_6s_linear_infinite]">
-            PickleballMatch.fun
-          </h1>
+          <div className="flex items-center justify-center mb-2">
+            <img src={logo} alt="PickleballMatch.Fun" className="h-10 sm:h-12 md:h-14 w-auto" />
+          </div>
           <p className="text-muted-foreground text-[10px] sm:text-xs md:text-sm font-medium leading-relaxed px-2 sm:px-0">🎾 Smart team assignment & scoring. Live match scheduling with multi-court management, real-time scoring, and smart team rotation. 🏓</p>
         </header>
 
