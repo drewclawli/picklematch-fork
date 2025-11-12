@@ -327,9 +327,7 @@ const Index = () => {
       if (gameConfig.schedulingType === 'single-elimination' || gameConfig.schedulingType === 'double-elimination') {
         const teamCount = gameConfig.tournamentPlayStyle === 'doubles' ? playerList.length / 2 : playerList.length;
         if (![4, 8, 16].includes(teamCount)) {
-          const requiredText = gameConfig.tournamentPlayStyle === 'singles'
-            ? '4, 8, or 16 players'
-            : '8, 16, or 32 players (to form 4, 8, or 16 teams)';
+          const requiredText = gameConfig.tournamentPlayStyle === 'singles' ? '4, 8, or 16 players' : '8, 16, or 32 players (to form 4, 8, or 16 teams)';
           toast.error(`${gameConfig.schedulingType === 'single-elimination' ? 'Single' : 'Double'} elimination requires exactly ${requiredText}.`);
           return;
         }
@@ -337,25 +335,20 @@ const Index = () => {
 
       // Tournament mode - generate complete bracket
       const isQualifierMode = gameConfig.schedulingType === 'qualifier-tournament';
-      
       if (isQualifierMode) {
-        const { generateQualifierTournamentSchedule } = await import('@/lib/qualifier-tournament-scheduler');
-        const { advanceGroupWinnersToKnockout } = await import('@/lib/qualifier-progression');
-        
+        const {
+          generateQualifierTournamentSchedule
+        } = await import('@/lib/qualifier-tournament-scheduler');
+        const {
+          advanceGroupWinnersToKnockout
+        } = await import('@/lib/qualifier-progression');
         try {
-          let newSchedule = generateQualifierTournamentSchedule(
-            playerList,
-            gameConfig.gameDuration,
-            gameConfig.courts,
-            gameConfig.courtConfigs || [],
-            teammatePairs || [],
-            gameConfig.tournamentPlayStyle === 'singles'
-          );
-          
+          let newSchedule = generateQualifierTournamentSchedule(playerList, gameConfig.gameDuration, gameConfig.courts, gameConfig.courtConfigs || [], teammatePairs || [], gameConfig.tournamentPlayStyle === 'singles');
           setMatches(newSchedule);
-          
           if (gameId) {
-            const { error } = await supabase.from('games').update({
+            const {
+              error
+            } = await supabase.from('games').update({
               players: playerList,
               matches: newSchedule as any,
               game_config: updatedConfig as any
@@ -369,28 +362,22 @@ const Index = () => {
         }
         return;
       }
-      
-      const { generateTournamentSchedule } = await import('@/lib/tournament-scheduler');
-      const { processByeMatches } = await import('@/lib/tournament-progression');
-      
+      const {
+        generateTournamentSchedule
+      } = await import('@/lib/tournament-scheduler');
+      const {
+        processByeMatches
+      } = await import('@/lib/tournament-progression');
       try {
-        let newSchedule = generateTournamentSchedule(
-          playerList,
-          gameConfig.gameDuration,
-          gameConfig.courts,
-          gameConfig.schedulingType,
-          gameConfig.courtConfigs || [],
-          teammatePairs || [],
-          gameConfig.tournamentPlayStyle === 'singles'
-        );
-        
+        let newSchedule = generateTournamentSchedule(playerList, gameConfig.gameDuration, gameConfig.courts, gameConfig.schedulingType, gameConfig.courtConfigs || [], teammatePairs || [], gameConfig.tournamentPlayStyle === 'singles');
+
         // Process bye matches
         newSchedule = processByeMatches(newSchedule);
-        
         setMatches(newSchedule);
-        
         if (gameId) {
-          const { error } = await supabase.from('games').update({
+          const {
+            error
+          } = await supabase.from('games').update({
             players: playerList,
             matches: newSchedule as any,
             game_config: updatedConfig as any
@@ -547,7 +534,7 @@ const Index = () => {
       <div className="max-w-5xl mx-auto p-2 sm:p-3 w-full relative z-10 flex flex-col h-full min-h-0">
         <header className="text-center py-2 sm:py-3 flex-shrink-0">
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-1 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient_6s_linear_infinite]">
-            TeamUp! Social Play
+            PickleballMatch.fun Match Scheduler        
           </h1>
           <p className="text-muted-foreground text-[10px] sm:text-xs md:text-sm font-medium leading-relaxed px-2 sm:px-0">🎾 Smart team assignment & scoring. Live match scheduling with multi-court management, real-time scoring, and smart team rotation. 🏓</p>
         </header>
@@ -557,11 +544,7 @@ const Index = () => {
         <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
           {activeSection === "setup" && <div className="flex flex-col h-full">
               <div className="flex-1 overflow-y-auto">
-                <GameSetup 
-                  onComplete={handleGameConfigComplete} 
-                  gameCode={gameCode} 
-                  onNewSession={gameId ? startNewSession : undefined}
-                />
+                <GameSetup onComplete={handleGameConfigComplete} gameCode={gameCode} onNewSession={gameId ? startNewSession : undefined} />
               </div>
               <div className="pt-2 sm:pt-3 border-t mt-2 sm:mt-3 flex-shrink-0 bg-card/95 backdrop-blur-sm">
                 
@@ -572,12 +555,12 @@ const Index = () => {
               {/* Conditional View Rendering */}
               <div className="flex-1 min-h-0 overflow-y-auto">
                 {isPlayerView && playerName ? <MyMatchesView playerName={playerName} matchGroups={playerMatches} matchScores={matchScores} currentTime={currentTime} allMatches={matches} onReleaseIdentity={() => {
-                releaseIdentity();
-                toast.success("Switched to organizer view");
-              }} /> : <ScheduleView matches={matches} onBack={resetApp} gameConfig={gameConfig} allPlayers={players} onScheduleUpdate={handleScheduleUpdate} matchScores={matchScores} onMatchScoresUpdate={setMatchScores} onCourtConfigUpdate={handleCourtConfigUpdate} isPlayerView={isPlayerView} playerName={playerName} onReleaseIdentity={() => {
-                releaseIdentity();
-                toast.success("Switched to organizer view");
-              }} onShowPlayerSelector={() => setShowPlayerIdentitySelector(true)} />}
+              releaseIdentity();
+              toast.success("Switched to organizer view");
+            }} /> : <ScheduleView matches={matches} onBack={resetApp} gameConfig={gameConfig} allPlayers={players} onScheduleUpdate={handleScheduleUpdate} matchScores={matchScores} onMatchScoresUpdate={setMatchScores} onCourtConfigUpdate={handleCourtConfigUpdate} isPlayerView={isPlayerView} playerName={playerName} onReleaseIdentity={() => {
+              releaseIdentity();
+              toast.success("Switched to organizer view");
+            }} onShowPlayerSelector={() => setShowPlayerIdentitySelector(true)} />}
               </div>
             </div>}
 
