@@ -161,8 +161,8 @@ class PlayerRotationQueue {
         return statsA.lastMatchEnd - statsB.lastMatchEnd;
       }
       
-      // Tertiary: alphabetical (for determinism)
-      return a.localeCompare(b);
+      // Tertiary: randomize to break entry order patterns
+      return Math.random() - 0.5;
     });
   }
   
@@ -508,56 +508,51 @@ function createDeterministicMatch(
     };
   }
 
-  // DOUBLES: Take first 4 players and find best configuration deterministically
-  const [p1, p2, p3, p4] = availablePlayers.slice(0, 4);
-  const configs = generateTeamConfigurations(p1, p2, p3, p4, teammatePairs);
+  // DOUBLES: Try multiple groups of 4 players from candidates for maximum rotation
+  const maxCandidates = Math.min(availablePlayers.length, 8); // Use up to 8 players
+  const playerGroups: string[][] = [];
+  
+  // Generate combinations of 4 players from available candidates
+  for (let i = 0; i < maxCandidates - 3; i++) {
+    for (let j = i + 1; j < maxCandidates - 2; j++) {
+      for (let k = j + 1; k < maxCandidates - 1; k++) {
+        for (let l = k + 1; l < maxCandidates; l++) {
+          playerGroups.push([
+            availablePlayers[i],
+            availablePlayers[j],
+            availablePlayers[k],
+            availablePlayers[l]
+          ]);
+          if (playerGroups.length >= 10) break; // Limit to 10 groups for performance
+        }
+        if (playerGroups.length >= 10) break;
+      }
+      if (playerGroups.length >= 10) break;
+    }
+    if (playerGroups.length >= 10) break;
+  }
+  
+  // If we have fewer than 4 players total, just use what we have
+  if (playerGroups.length === 0 && availablePlayers.length >= 4) {
+    playerGroups.push(availablePlayers.slice(0, 4));
+  }
   
   let bestMatch: Match | null = null;
   let bestScore = -Infinity;
   
-  // If matchup tracker exists, prioritize configurations without duplicate matchups
-  if (matchupTracker) {
-    const freshConfigs: [[string, string], [string, string]][] = [];
-    const usedConfigs: [[string, string], [string, string]][] = [];
+  // Evaluate all possible groups and their team configurations
+  for (const group of playerGroups) {
+    const [p1, p2, p3, p4] = group;
+    const configs = generateTeamConfigurations(p1, p2, p3, p4, teammatePairs);
     
-    for (const config of configs) {
-      if (matchupTracker.hasDoublesMatchup(config[0], config[1])) {
-        usedConfigs.push(config);
-      } else {
-        freshConfigs.push(config);
-      }
-    }
-    
-    // Prioritize fresh matchups
-    const prioritizedConfigs = [...freshConfigs, ...usedConfigs];
-    
-    for (const [team1, team2] of prioritizedConfigs) {
-      const score = evaluateMatchDeterministic(team1, team2, playerStats, teammatePairs, court);
-      
-      // Bonus for fresh matchups
-      const freshBonus = !matchupTracker.hasDoublesMatchup(team1, team2) ? 1000 : 0;
-      
-      if (score + freshBonus > bestScore) {
-        bestScore = score + freshBonus;
-        bestMatch = {
-          id: uniqueId,
-          court,
-          startTime,
-          endTime,
-          team1,
-          team2,
-          status: 'scheduled',
-          isLocked: false,
-        };
-      }
-    }
-  } else {
-    // Original logic without matchup tracking
     for (const [team1, team2] of configs) {
       const score = evaluateMatchDeterministic(team1, team2, playerStats, teammatePairs, court);
       
-      if (score > bestScore) {
-        bestScore = score;
+      // Add massive bonus for fresh matchups (no player pairings have been played before)
+      const freshBonus = matchupTracker && !matchupTracker.hasDoublesMatchup(team1, team2) ? 1000 : 0;
+      
+      if (score + freshBonus > bestScore) {
+        bestScore = score + freshBonus;
         bestMatch = {
           id: uniqueId,
           court,
@@ -728,21 +723,31 @@ function evaluateMatchDeterministic(
   if (isBoundPair1) score += 1000;
   if (isBoundPair2) score += 1000;
   
-  // 3. PARTNERSHIP VARIETY (unless bound)
+  // 3. PARTNERSHIP DIVERSITY - Prefer NEW and varied partners (unless bound)
   if (!isBoundPair1) {
+    // Bonus for new partnerships
+    if (!stats1.partners.has(p2)) score += 50;
+    // Penalty for recent partnerships
     if (stats1.recentPartners[0] === p2) score -= 50;
     else if (stats1.recentPartners.includes(p2)) score -= 25;
   }
   if (!isBoundPair2) {
+    // Bonus for new partnerships
+    if (!stats3.partners.has(p4)) score += 50;
+    // Penalty for recent partnerships
     if (stats3.recentPartners[0] === p4) score -= 50;
     else if (stats3.recentPartners.includes(p4)) score -= 25;
   }
   
-  // 4. OPPONENT VARIETY
-  if (stats1.recentOpponents.slice(0, 2).includes(p3)) score -= 30;
-  if (stats1.recentOpponents.slice(0, 2).includes(p4)) score -= 30;
-  if (stats2.recentOpponents.slice(0, 2).includes(p3)) score -= 30;
-  if (stats2.recentOpponents.slice(0, 2).includes(p4)) score -= 30;
+  // 4. OPPONENT DIVERSITY - Prefer NEW and varied opponents
+  const opponentPairs = [[p1, p3], [p1, p4], [p2, p3], [p2, p4]];
+  for (const [player1, player2] of opponentPairs) {
+    const s1 = playerStats.get(player1)!;
+    // Bonus for new opponents
+    if (!s1.opponents.has(player2)) score += 40;
+    // Penalty for recent opponents
+    if (s1.recentOpponents.slice(0, 2).includes(player2)) score -= 30;
+  }
   
   // 5. DETERMINISTIC TIEBREAKER - Use player name hash for stable sorting
   const nameHash = (p1 + p2 + p3 + p4).split('').reduce((acc, char) => 
@@ -960,8 +965,20 @@ export function regenerateScheduleFromSlot(
   const playerStats = initializePlayerStats(players, courts);
   const rotationQueue = new PlayerRotationQueue(players, playerStats);
   const restQueue = new RestQueue();
+  const matchupTracker = new MatchupTracker(); // Track all previous matchups
   
   [...playedMatches, ...preservedMatches].forEach((match) => {
+    // Record matchup in tracker
+    if (match.isSingles) {
+      matchupTracker.addSinglesMatch(match.team1[0], match.team2[0]);
+    } else {
+      matchupTracker.addDoublesMatch(
+        match.team1 as [string, string],
+        match.team2 as [string, string]
+      );
+    }
+    
+    // Update player stats
     [...match.team1, ...match.team2].forEach((player) => {
       updatePlayerStats(player, match, playerStats, gameDuration);
     });
@@ -1013,16 +1030,27 @@ export function regenerateScheduleFromSlot(
       
       if (candidatePlayers.length >= playersNeeded) {
         const match = createDeterministicMatch(
-          candidatePlayers.slice(0, playersNeeded),
+          candidatePlayers,
           playerStats,
           slotStartTime,
           slotEndTime,
           courtConfig.courtNumber,
           teammatePairs,
-          courtConfig.type
+          courtConfig.type,
+          matchupTracker
         );
         
         if (match) {
+          // Record matchup in tracker
+          if (match.isSingles) {
+            matchupTracker.addSinglesMatch(match.team1[0], match.team2[0]);
+          } else {
+            matchupTracker.addDoublesMatch(
+              match.team1 as [string, string],
+              match.team2 as [string, string]
+            );
+          }
+          
           newMatches.push(match);
           slotMatches.push(match);
           
