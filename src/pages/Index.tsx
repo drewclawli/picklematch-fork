@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GameSetup, GameConfig } from "@/components/GameSetup";
@@ -7,7 +7,7 @@ import { ScheduleView } from "@/components/ScheduleView";
 import { CheckInOut } from "@/components/CheckInOut";
 import { BottomNav } from "@/components/BottomNav";
 import { generateSchedule, Match } from "@/lib/scheduler";
-import { Trophy, Users, UserCircle } from "lucide-react";
+import { Trophy, Users, UserCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -18,6 +18,8 @@ import { usePlayerNotifications } from "@/hooks/use-player-notifications";
 import { PlayerIdentitySelector } from "@/components/PlayerIdentitySelector";
 import logo from "@/assets/logo.png";
 import { MyMatchesView } from "@/components/MyMatchesView";
+import { debugLogger } from "@/lib/debug-logger";
+import { safeStorage } from "@/lib/safe-storage";
 type Section = "setup" | "players" | "matches" | "history" | "leaderboard";
 const Index = () => {
   const [activeSection, setActiveSection] = useState<Section>("setup");
@@ -36,6 +38,12 @@ const Index = () => {
   const [isRestoringSession, setIsRestoringSession] = useState(true);
   const [showPlayerIdentitySelector, setShowPlayerIdentitySelector] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [unexpectedReload, setUnexpectedReload] = useState(false);
+  
+  // Refs for preventing duplicate operations
+  const isRestoringRef = useRef(false);
+  const authInitializedRef = useRef(false);
+  const subscriptionRef = useRef<any>(null);
 
   // Player identity and view management
   const {
@@ -74,13 +82,67 @@ const Index = () => {
     });
   };
 
-  // Restore session from localStorage on mount
+  // Track page load to detect unexpected reloads
+  useEffect(() => {
+    debugLogger.log('lifecycle', 'Component mounted', {
+      userAgent: navigator.userAgent,
+      isAndroid: /android/i.test(navigator.userAgent),
+      sessionId: Date.now()
+    });
+
+    // Check if this is an unexpected reload
+    const lastActivity = safeStorage.getItem('last_activity');
+    if (lastActivity) {
+      const timeSinceActivity = Date.now() - parseInt(lastActivity);
+      if (timeSinceActivity < 5000) {
+        debugLogger.log('error', 'Unexpected reload detected', { timeSinceActivity });
+        setUnexpectedReload(true);
+      }
+    }
+
+    // Update activity timestamp periodically
+    const activityInterval = setInterval(() => {
+      safeStorage.setItem('last_activity', Date.now().toString());
+    }, 2000);
+
+    return () => {
+      clearInterval(activityInterval);
+      debugLogger.log('lifecycle', 'Component unmounted');
+    };
+  }, []);
+
+  // Visibility API handler - pause operations when hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        debugLogger.log('lifecycle', 'App hidden');
+      } else {
+        debugLogger.log('lifecycle', 'App visible');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Restore session from localStorage on mount with stability checks
   useEffect(() => {
     const restoreSession = async () => {
-      const savedGameId = localStorage.getItem('teamup_game_id');
-      const savedGameCode = localStorage.getItem('teamup_game_code');
+      // Prevent duplicate restoration
+      if (isRestoringRef.current) {
+        debugLogger.log('lifecycle', 'Session restoration already in progress, skipping');
+        return;
+      }
+      isRestoringRef.current = true;
+      
+      debugLogger.log('lifecycle', 'Starting session restoration');
+      
+      const savedGameId = safeStorage.getItem('teamup_game_id');
+      const savedGameCode = safeStorage.getItem('teamup_game_code');
       if (savedGameId && savedGameCode) {
         try {
+          debugLogger.log('lifecycle', 'Found saved session', { gameId: savedGameId, gameCode: savedGameCode });
+          
           const {
             data,
             error
@@ -105,25 +167,33 @@ const Index = () => {
             } else {
               setActiveSection("setup");
             }
+            debugLogger.log('lifecycle', 'Session restored successfully');
             toast.success(`Session restored: ${data.game_code}`);
           } else {
-            // Session not found in DB, clear localStorage
-            localStorage.removeItem('teamup_game_id');
-            localStorage.removeItem('teamup_game_code');
+            // Session not found in DB, clear storage
+            debugLogger.log('lifecycle', 'Session not found in DB, clearing');
+            safeStorage.removeItem('teamup_game_id');
+            safeStorage.removeItem('teamup_game_code');
           }
         } catch (error) {
+          debugLogger.log('error', 'Failed to restore session', error);
           console.error('Failed to restore session:', error);
-          localStorage.removeItem('teamup_game_id');
-          localStorage.removeItem('teamup_game_code');
+          safeStorage.removeItem('teamup_game_id');
+          safeStorage.removeItem('teamup_game_code');
+          toast.error('Failed to restore session');
         }
       }
       setIsRestoringSession(false);
+      isRestoringRef.current = false;
     };
+    
     if (userId) {
       restoreSession();
     } else if (userId === null) {
       // No user yet, but we know auth check completed with no session
+      debugLogger.log('lifecycle', 'No user session, skipping restoration');
       setIsRestoringSession(false);
+      isRestoringRef.current = false;
     }
   }, [userId]);
 
@@ -141,38 +211,70 @@ const Index = () => {
     }
   }, [userId]);
 
-  // Initialize anonymous authentication
+  // Initialize anonymous authentication with error boundaries
   useEffect(() => {
+    if (authInitializedRef.current) {
+      debugLogger.log('auth', 'Auth already initialized, skipping');
+      return;
+    }
+    authInitializedRef.current = true;
+
     const initAuth = async () => {
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
-      if (!session) {
+      try {
+        debugLogger.log('auth', 'Starting auth initialization');
+        
         const {
-          data,
-          error
-        } = await supabase.auth.signInAnonymously();
-        if (error) {
-          console.error('Anonymous auth error:', error);
-          toast.error('Failed to initialize app');
-          return;
+          data: {
+            session
+          }
+        } = await supabase.auth.getSession();
+        
+        if (!session) {
+          debugLogger.log('auth', 'No existing session, signing in anonymously');
+          const {
+            data,
+            error
+          } = await supabase.auth.signInAnonymously();
+          if (error) {
+            debugLogger.log('error', 'Anonymous auth error', error);
+            console.error('Anonymous auth error:', error);
+            toast.error('Failed to initialize app');
+            return;
+          }
+          setUserId(data.user?.id || null);
+          debugLogger.log('auth', 'Anonymous sign in successful', { userId: data.user?.id });
+        } else {
+          setUserId(session.user.id);
+          debugLogger.log('auth', 'Existing session found', { userId: session.user.id });
         }
-        setUserId(data.user?.id || null);
-      } else {
-        setUserId(session.user.id);
+      } catch (error) {
+        debugLogger.log('error', 'Auth initialization failed', error);
+        console.error('Auth initialization failed:', error);
+        toast.error('Failed to initialize authentication');
       }
     };
+    
     initAuth();
+    
+    // Debounced auth state change handler
+    let authChangeTimeout: NodeJS.Timeout;
     const {
       data: {
         subscription
       }
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setUserId(session?.user?.id || null);
+      clearTimeout(authChangeTimeout);
+      authChangeTimeout = setTimeout(() => {
+        debugLogger.log('auth', 'Auth state changed', { event, userId: session?.user?.id });
+        setUserId(session?.user?.id || null);
+      }, 300);
     });
-    return () => subscription.unsubscribe();
+    
+    return () => {
+      clearTimeout(authChangeTimeout);
+      subscription.unsubscribe();
+      debugLogger.log('auth', 'Auth subscription cleaned up');
+    };
   }, []);
   // Sync state from database matches
   const syncMatchScoresFromMatches = (matches: Match[]) => {
@@ -187,34 +289,81 @@ const Index = () => {
     });
     setMatchScores(scoresMap);
   };
+  // Realtime subscription with error boundaries and reconnection
   useEffect(() => {
     if (!gameId) return;
-    const channel = supabase.channel('game-updates').on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'games',
-      filter: `id=eq.${gameId}`
-    }, payload => {
-      if (payload.eventType === 'UPDATE') {
-        const updatedGame = payload.new;
-        const newMatches = updatedGame.matches as unknown as Match[] || [];
-        const newPlayers = updatedGame.players || [];
-        const newConfig = updatedGame.game_config as unknown as GameConfig;
-        const sanitized = sanitizeMatches(newMatches);
-        setPlayers(newPlayers);
-        setMatches(sanitized);
-        setGameConfig(newConfig);
-        syncMatchScoresFromMatches(sanitized);
+    
+    // Clean up existing subscription
+    if (subscriptionRef.current) {
+      debugLogger.log('subscription', 'Cleaning up existing subscription');
+      supabase.removeChannel(subscriptionRef.current);
+      subscriptionRef.current = null;
+    }
+    
+    debugLogger.log('subscription', 'Setting up realtime subscription', { gameId });
+    
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 2000;
+    
+    const setupSubscription = () => {
+      try {
+        const channel = supabase.channel('game-updates').on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'games',
+          filter: `id=eq.${gameId}`
+        }, payload => {
+          try {
+            debugLogger.log('subscription', 'Received update', { eventType: payload.eventType });
+            
+            if (payload.eventType === 'UPDATE') {
+              const updatedGame = payload.new;
+              const newMatches = updatedGame.matches as unknown as Match[] || [];
+              const newPlayers = updatedGame.players || [];
+              const newConfig = updatedGame.game_config as unknown as GameConfig;
+              const sanitized = sanitizeMatches(newMatches);
+              setPlayers(newPlayers);
+              setMatches(sanitized);
+              setGameConfig(newConfig);
+              syncMatchScoresFromMatches(sanitized);
+            }
+          } catch (error) {
+            debugLogger.log('error', 'Failed to process subscription update', error);
+            console.error('Subscription update error:', error);
+          }
+        }).subscribe((status, err) => {
+          debugLogger.log('subscription', 'Subscription status changed', { status, error: err });
+          
+          if (status === 'CHANNEL_ERROR' && retryCount < maxRetries) {
+            retryCount++;
+            debugLogger.log('subscription', 'Retrying subscription', { retryCount });
+            setTimeout(setupSubscription, retryDelay * retryCount);
+          }
+        });
+        
+        subscriptionRef.current = channel;
+      } catch (error) {
+        debugLogger.log('error', 'Failed to setup subscription', error);
+        console.error('Subscription setup error:', error);
       }
-    }).subscribe();
+    };
+    
+    setupSubscription();
+    
     return () => {
-      supabase.removeChannel(channel);
+      if (subscriptionRef.current) {
+        debugLogger.log('subscription', 'Cleaning up subscription on unmount');
+        supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
+      }
     };
   }, [gameId]);
   const createNewGame = async () => {
     // Clear any existing session
-    localStorage.removeItem('teamup_game_id');
-    localStorage.removeItem('teamup_game_code');
+    debugLogger.log('lifecycle', 'Creating new game');
+    safeStorage.removeItem('teamup_game_id');
+    safeStorage.removeItem('teamup_game_code');
     setShowGameCodeDialog(false);
     setActiveSection("setup");
   };
@@ -242,9 +391,9 @@ const Index = () => {
       syncMatchScoresFromMatches(sanitized);
       setShowGameCodeDialog(false);
 
-      // Save session to localStorage
-      localStorage.setItem('teamup_game_id', data.id);
-      localStorage.setItem('teamup_game_code', data.game_code);
+      // Save session to storage
+      safeStorage.setItem('teamup_game_id', data.id);
+      safeStorage.setItem('teamup_game_code', data.game_code);
       if (data.game_config) {
         setSetupComplete(true);
       }
@@ -293,9 +442,9 @@ const Index = () => {
         setGameId(data.id);
         setGameCode(newGameCode);
 
-        // Save session to localStorage
-        localStorage.setItem('teamup_game_id', data.id);
-        localStorage.setItem('teamup_game_code', newGameCode);
+        // Save session to storage
+        safeStorage.setItem('teamup_game_id', data.id);
+        safeStorage.setItem('teamup_game_code', newGameCode);
         toast.success(`Game created! Code: ${newGameCode}`);
       }
       setActiveSection("players");
@@ -498,9 +647,10 @@ const Index = () => {
     setShowGameCodeDialog(true);
   };
   const startNewSession = () => {
-    // Clear localStorage
-    localStorage.removeItem('teamup_game_id');
-    localStorage.removeItem('teamup_game_code');
+    // Clear storage
+    debugLogger.log('lifecycle', 'Starting new session');
+    safeStorage.removeItem('teamup_game_id');
+    safeStorage.removeItem('teamup_game_code');
 
     // Reset all state
     setActiveSection("setup");
@@ -512,6 +662,7 @@ const Index = () => {
     setSetupComplete(false);
     setMatchScores(new Map());
     setShowGameCodeDialog(false);
+    setUnexpectedReload(false);
     toast.success("New session started");
   };
   // Show loading state while restoring session
@@ -526,6 +677,45 @@ const Index = () => {
     </div>;
   }
   return <div className="h-screen bg-gradient-to-br from-background via-secondary/30 to-accent/5 relative flex flex-col">
+      {/* Unexpected reload warning */}
+      {unexpectedReload && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md">
+          <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-destructive mb-2">
+                Unexpected reload detected
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const logs = debugLogger.exportLogs();
+                    const blob = new Blob([logs], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `debug-logs-${Date.now()}.json`;
+                    a.click();
+                    toast.success('Debug logs exported');
+                  }}
+                >
+                  Export Logs
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setUnexpectedReload(false)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Decorative background elements */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div className="absolute top-20 right-10 w-64 h-64 bg-primary rounded-full blur-3xl"></div>

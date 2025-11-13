@@ -12,14 +12,22 @@ export const usePlayerNotifications = (
   const notifiedMatches = useRef<Set<string>>(new Set());
   const hasRequestedPermission = useRef(false);
 
-  // Request notification permission once
+  // Request notification permission once with proper error handling
   useEffect(() => {
     if (!playerName || !gameId || hasRequestedPermission.current) return;
 
     const prefs = getNotificationPreferences(gameId);
     if (prefs.enabled && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-      hasRequestedPermission.current = true;
+      // Use async/await for proper error handling
+      (async () => {
+        try {
+          await Notification.requestPermission();
+          hasRequestedPermission.current = true;
+        } catch (error) {
+          console.warn('Failed to request notification permission:', error);
+          // Don't block app functionality if notifications fail
+        }
+      })();
     }
   }, [playerName, gameId]);
 
