@@ -84,6 +84,52 @@ interface PlayerStats {
   matchesPerCourt: Map<number, number>;
 }
 
+// ==================== MATCHUP TRACKING ====================
+
+class MatchupTracker {
+  private matchups: Set<string>;
+  
+  constructor() {
+    this.matchups = new Set();
+  }
+  
+  private createMatchupKey(player1: string, player2: string): string {
+    // Sort alphabetically to ensure "A-B" === "B-A"
+    return [player1, player2].sort().join('-');
+  }
+  
+  hasMatchup(player1: string, player2: string): boolean {
+    return this.matchups.has(this.createMatchupKey(player1, player2));
+  }
+  
+  addMatchup(player1: string, player2: string): void {
+    this.matchups.add(this.createMatchupKey(player1, player2));
+  }
+  
+  // For doubles, track all opponent pairings (not teammates)
+  addDoublesMatch(team1: [string, string], team2: [string, string]): void {
+    // Track all opponent combinations (4 total)
+    this.addMatchup(team1[0], team2[0]);
+    this.addMatchup(team1[0], team2[1]);
+    this.addMatchup(team1[1], team2[0]);
+    this.addMatchup(team1[1], team2[1]);
+  }
+  
+  // For singles, track the single opponent pairing
+  addSinglesMatch(player1: string, player2: string): void {
+    this.addMatchup(player1, player2);
+  }
+  
+  // Check if a doubles match configuration has been played before
+  hasDoublesMatchup(team1: [string, string], team2: [string, string]): boolean {
+    // Check if ANY opponent pairing has been played before
+    return this.hasMatchup(team1[0], team2[0]) ||
+           this.hasMatchup(team1[0], team2[1]) ||
+           this.hasMatchup(team1[1], team2[0]) ||
+           this.hasMatchup(team1[1], team2[1]);
+  }
+}
+
 interface ScheduleSlot {
   timeSlot: number;
   matches: Match[];
@@ -201,6 +247,7 @@ function generateCompleteSchedule(
   const playerStats = initializePlayerStats(players, courtConfigs.length);
   const rotationQueue = new PlayerRotationQueue(players, playerStats);
   const restQueue = new RestQueue();
+  const matchupTracker = new MatchupTracker(); // Track all previous matchups
   const schedule: ScheduleSlot[] = [];
 
   // Generate SLOT BY SLOT (not court by court) to prevent conflicts
@@ -245,12 +292,20 @@ function generateCompleteSchedule(
           slotEndTime,
           courtConfig.courtNumber,
           teammatePairs,
-          courtConfig.type
+          courtConfig.type,
+          matchupTracker // Pass matchup tracker
         );
         
         if (match) {
           slotMatches.push(match);
           const matchPlayers = [...match.team1, ...match.team2];
+          
+          // Record this matchup in the tracker
+          if (courtConfig.type === 'singles') {
+            matchupTracker.addSinglesMatch(match.team1[0], match.team2[0]);
+          } else {
+            matchupTracker.addDoublesMatch(match.team1 as [string, string], match.team2 as [string, string]);
+          }
           
           matchPlayers.forEach(player => {
             playersUsedThisSlot.add(player);
@@ -404,7 +459,8 @@ function createDeterministicMatch(
   endTime: number,
   court: number,
   teammatePairs: TeammatePair[] = [],
-  matchType: 'singles' | 'doubles' = 'doubles'
+  matchType: 'singles' | 'doubles' = 'doubles',
+  matchupTracker?: MatchupTracker
 ): Match | null {
   const playersNeeded = matchType === 'singles' ? 2 : 4;
   if (availablePlayers.length < playersNeeded) return null;
@@ -415,6 +471,30 @@ function createDeterministicMatch(
   // SINGLES: Take first 2 players from deterministic queue
   if (matchType === 'singles') {
     const [p1, p2] = availablePlayers.slice(0, 2);
+    
+    // Check for duplicate matchup
+    if (matchupTracker && matchupTracker.hasMatchup(p1, p2)) {
+      // Try to find alternative players
+      for (let i = 0; i < availablePlayers.length - 1; i++) {
+        for (let j = i + 1; j < availablePlayers.length; j++) {
+          if (!matchupTracker.hasMatchup(availablePlayers[i], availablePlayers[j])) {
+            return {
+              id: uniqueId,
+              court,
+              startTime,
+              endTime,
+              team1: [availablePlayers[i]] as [string],
+              team2: [availablePlayers[j]] as [string],
+              status: 'scheduled',
+              isSingles: true,
+              isLocked: false,
+            };
+          }
+        }
+      }
+      // All matchups exhausted, allow repeat
+    }
+    
     return {
       id: uniqueId,
       court,
@@ -435,21 +515,60 @@ function createDeterministicMatch(
   let bestMatch: Match | null = null;
   let bestScore = -Infinity;
   
-  for (const [team1, team2] of configs) {
-    const score = evaluateMatchDeterministic(team1, team2, playerStats, teammatePairs, court);
+  // If matchup tracker exists, prioritize configurations without duplicate matchups
+  if (matchupTracker) {
+    const freshConfigs: [[string, string], [string, string]][] = [];
+    const usedConfigs: [[string, string], [string, string]][] = [];
     
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = {
-        id: uniqueId,
-        court,
-        startTime,
-        endTime,
-        team1,
-        team2,
-        status: 'scheduled',
-        isLocked: false,
-      };
+    for (const config of configs) {
+      if (matchupTracker.hasDoublesMatchup(config[0], config[1])) {
+        usedConfigs.push(config);
+      } else {
+        freshConfigs.push(config);
+      }
+    }
+    
+    // Prioritize fresh matchups
+    const prioritizedConfigs = [...freshConfigs, ...usedConfigs];
+    
+    for (const [team1, team2] of prioritizedConfigs) {
+      const score = evaluateMatchDeterministic(team1, team2, playerStats, teammatePairs, court);
+      
+      // Bonus for fresh matchups
+      const freshBonus = !matchupTracker.hasDoublesMatchup(team1, team2) ? 1000 : 0;
+      
+      if (score + freshBonus > bestScore) {
+        bestScore = score + freshBonus;
+        bestMatch = {
+          id: uniqueId,
+          court,
+          startTime,
+          endTime,
+          team1,
+          team2,
+          status: 'scheduled',
+          isLocked: false,
+        };
+      }
+    }
+  } else {
+    // Original logic without matchup tracking
+    for (const [team1, team2] of configs) {
+      const score = evaluateMatchDeterministic(team1, team2, playerStats, teammatePairs, court);
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = {
+          id: uniqueId,
+          court,
+          startTime,
+          endTime,
+          team1,
+          team2,
+          status: 'scheduled',
+          isLocked: false,
+        };
+      }
     }
   }
   

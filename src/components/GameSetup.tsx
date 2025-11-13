@@ -17,6 +17,7 @@ interface GameSetupProps {
   onBack?: () => void;
   gameCode?: string;
   onNewSession?: () => void;
+  hasExistingMatches?: boolean;
 }
 export interface GameConfig {
   gameDuration: number;
@@ -35,7 +36,8 @@ export const GameSetup = ({
   onComplete,
   onBack,
   gameCode,
-  onNewSession
+  onNewSession,
+  hasExistingMatches = false
 }: GameSetupProps) => {
   const [gameDuration, setGameDuration] = useState<number>(10);
   const [totalTime, setTotalTime] = useState<number>(60);
@@ -179,25 +181,47 @@ export const GameSetup = ({
           <Trophy className="w-3.5 h-3.5" />
           Scheduling Type
         </Label>
-        <RadioGroup value={schedulingType} onValueChange={(v) => setSchedulingType(v as any)}>
+        
+        {hasExistingMatches && (
+          <Alert className="mb-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Scheduling mode is locked. To change modes, please start a new session.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <RadioGroup 
+          value={schedulingType} 
+          onValueChange={(v) => setSchedulingType(v as any)}
+          disabled={hasExistingMatches}
+        >
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${schedulingType === 'round-robin' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
-              <RadioGroupItem value="round-robin" className="sr-only" />
+            <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all ${
+              hasExistingMatches ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+            } ${schedulingType === 'round-robin' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
+              <RadioGroupItem value="round-robin" className="sr-only" disabled={hasExistingMatches} />
               <span className="text-sm font-bold">Round Robin</span>
               <p className="text-xs text-muted-foreground text-center mt-1">Everyone plays multiple games</p>
             </label>
-            <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${schedulingType === 'qualifier-tournament' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
-              <RadioGroupItem value="qualifier-tournament" className="sr-only" />
+            <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all ${
+              hasExistingMatches ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+            } ${schedulingType === 'qualifier-tournament' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
+              <RadioGroupItem value="qualifier-tournament" className="sr-only" disabled={hasExistingMatches} />
               <span className="text-sm font-bold">Qualifier Stage</span>
               <p className="text-xs text-muted-foreground text-center mt-1">Groups then knockout (4-24 teams)</p>
             </label>
-            <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${schedulingType === 'single-elimination' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
-              <RadioGroupItem value="single-elimination" className="sr-only" />
+            <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all ${
+              hasExistingMatches ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+            } ${schedulingType === 'single-elimination' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
+              <RadioGroupItem value="single-elimination" className="sr-only" disabled={hasExistingMatches} />
               <span className="text-sm font-bold">Single Elim</span>
               <p className="text-xs text-muted-foreground text-center mt-1">4/8/16 teams only</p>
             </label>
-            <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all ${schedulingType === 'double-elimination' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
-              <RadioGroupItem value="double-elimination" className="sr-only" />
+            <label className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all ${
+              hasExistingMatches ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+            } ${schedulingType === 'double-elimination' ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"}`}>
+              <RadioGroupItem value="double-elimination" className="sr-only" disabled={hasExistingMatches} />
               <span className="text-sm font-bold">Double Elim</span>
               <p className="text-xs text-muted-foreground text-center mt-1">4/8/16 teams only</p>
             </label>

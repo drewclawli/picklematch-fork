@@ -571,7 +571,12 @@ const Index = () => {
         <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
           {activeSection === "setup" && <div className="flex flex-col h-full">
               <div className="flex-1 overflow-y-auto">
-                <GameSetup onComplete={handleGameConfigComplete} gameCode={gameCode} onNewSession={gameId ? startNewSession : undefined} />
+                <GameSetup 
+                  onComplete={handleGameConfigComplete} 
+                  gameCode={gameCode} 
+                  onNewSession={gameId ? startNewSession : undefined}
+                  hasExistingMatches={matches.length > 0}
+                />
               </div>
               <div className="pt-2 sm:pt-3 border-t mt-2 sm:mt-3 flex-shrink-0 bg-card/95 backdrop-blur-sm">
                 
