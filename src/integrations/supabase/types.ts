@@ -94,11 +94,53 @@ export type Database = {
           },
         ]
       }
+      shared_results: {
+        Row: {
+          created_at: string
+          expires_at: string
+          game_id: string
+          id: string
+          share_token: string
+          share_type: string
+          snapshot_data: Json
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          game_id: string
+          id?: string
+          share_token: string
+          share_type: string
+          snapshot_data: Json
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          game_id?: string
+          id?: string
+          share_token?: string
+          share_type?: string
+          snapshot_data?: Json
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_results_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_shares: { Args: never; Returns: undefined }
       generate_game_code: { Args: never; Returns: string }
     }
     Enums: {
