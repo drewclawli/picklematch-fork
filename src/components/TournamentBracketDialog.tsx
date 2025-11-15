@@ -27,10 +27,10 @@ export function TournamentBracketDialog({
 }: TournamentBracketDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] w-[95vw] sm:w-full overflow-hidden flex flex-col p-3 sm:p-6">
+      <DialogContent className="max-w-6xl max-h-[90vh] w-[95vw] sm:w-full overflow-hidden flex flex-col p-3 sm:p-6" aria-labelledby="bracket-dialog-title" aria-describedby="bracket-dialog-description">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-base sm:text-lg">Tournament Bracket</DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
+          <DialogTitle id="bracket-dialog-title" className="text-base sm:text-lg">Tournament Bracket</DialogTitle>
+          <DialogDescription id="bracket-dialog-description" className="text-xs sm:text-sm">
             {schedulingType === 'single-elimination'
               ? 'Single Elimination - One loss and you\'re out'
               : schedulingType === 'double-elimination'

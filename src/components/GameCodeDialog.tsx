@@ -30,12 +30,13 @@ export const GameCodeDialog = ({
     onJoinGame(code);
   };
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto" aria-labelledby="game-dialog-title" aria-describedby="game-dialog-description">
         <DialogHeader className="space-y-4">
+          <DialogTitle id="game-dialog-title" className="sr-only">Get Started with PickleballMatch.Fun</DialogTitle>
           <div className="flex items-center justify-center">
             <img src={logo} alt="PickleballMatch.Fun" className="h-16 sm:h-20 w-auto" />
           </div>
-          <DialogDescription className="text-center text-sm sm:text-base">
+          <DialogDescription id="game-dialog-description" className="text-center text-sm sm:text-base">
             Smart rotation & scoring for pickleball tournaments
           </DialogDescription>
         </DialogHeader>
