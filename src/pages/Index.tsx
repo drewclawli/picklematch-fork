@@ -436,6 +436,34 @@ const Index = () => {
       console.error(error);
     }
   };
+  // Immediately sync players to database (called whenever players/pairs change)
+  const handlePlayersChange = async (playerList: string[], teammatePairs?: {
+    player1: string;
+    player2: string;
+  }[]) => {
+    setPlayers(playerList);
+    if (!gameConfig || !gameId) return;
+    
+    const updatedConfig = {
+      ...gameConfig,
+      teammatePairs
+    };
+    setGameConfig(updatedConfig);
+    
+    // Update database immediately - players only, no match changes
+    try {
+      const { error } = await supabase.from('games').update({
+        players: playerList,
+        game_config: updatedConfig as any
+      }).eq('id', gameId);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error("Failed to sync players", error);
+    }
+  };
+
+  // Generate matches and update database (called when "Generate Matches" button is clicked)
   const handlePlayersUpdate = async (playerList: string[], teammatePairs?: {
     player1: string;
     player2: string;
@@ -741,7 +769,7 @@ const Index = () => {
             </div>}
 
           {activeSection === "players" && gameCode && <div className="flex-1 min-h-0 h-full">
-              <CheckInOut gameCode={gameCode} players={players} onPlayersUpdate={handlePlayersUpdate} matches={matches} matchScores={matchScores} teammatePairs={gameConfig?.teammatePairs} onNavigateToMatches={() => setActiveSection("matches")} hasStartedMatches={matches.length > 0} />
+              <CheckInOut gameCode={gameCode} players={players} onPlayersChange={handlePlayersChange} onPlayersUpdate={handlePlayersUpdate} matches={matches} matchScores={matchScores} teammatePairs={gameConfig?.teammatePairs} onNavigateToMatches={() => setActiveSection("matches")} hasStartedMatches={matches.length > 0} />
             </div>}
 
           {activeSection === "players" && !gameCode && <div className="text-center py-12">
