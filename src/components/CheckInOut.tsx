@@ -4,6 +4,10 @@ import { Users } from "lucide-react";
 interface CheckInOutProps {
   gameCode: string;
   players: string[];
+  onPlayersChange: (players: string[], teammatePairs?: {
+    player1: string;
+    player2: string;
+  }[]) => void;
   onPlayersUpdate: (players: string[], teammatePairs?: {
     player1: string;
     player2: string;
@@ -23,6 +27,7 @@ interface CheckInOutProps {
 export const CheckInOut = ({
   gameCode,
   players,
+  onPlayersChange,
   onPlayersUpdate,
   matches = [],
   matchScores = new Map(),
@@ -49,12 +54,20 @@ export const CheckInOut = ({
       </div>
 
       <div className="flex-1 min-h-0">
-        <PlayerSetup onComplete={(playerList, pairs) => {
-          onPlayersUpdate(playerList, pairs);
-          if (onNavigateToMatches) {
-            onNavigateToMatches();
-          }
-        }} initialPlayers={players} initialTeammatePairs={teammatePairs} matches={matches} matchScores={matchScores} hasStartedMatches={hasStartedMatches} />
+        <PlayerSetup 
+          onPlayersChange={onPlayersChange}
+          onComplete={(playerList, pairs) => {
+            onPlayersUpdate(playerList, pairs);
+            if (onNavigateToMatches) {
+              onNavigateToMatches();
+            }
+          }} 
+          initialPlayers={players} 
+          initialTeammatePairs={teammatePairs} 
+          matches={matches} 
+          matchScores={matchScores} 
+          hasStartedMatches={hasStartedMatches} 
+        />
       </div>
     </div>;
 };

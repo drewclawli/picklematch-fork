@@ -8,6 +8,10 @@ import { toast } from "sonner";
 import { Match } from "@/lib/scheduler";
 import { validatePlayerName } from "@/lib/validation";
 interface PlayerSetupProps {
+  onPlayersChange?: (players: string[], teammatePairs?: {
+    player1: string;
+    player2: string;
+  }[]) => void;
   onComplete: (players: string[], teammatePairs?: {
     player1: string;
     player2: string;
@@ -25,6 +29,7 @@ interface PlayerSetupProps {
   hasStartedMatches?: boolean;
 }
 export const PlayerSetup = ({
+  onPlayersChange,
   onComplete,
   initialPlayers = [],
   initialTeammatePairs = [],
@@ -57,17 +62,27 @@ export const PlayerSetup = ({
       toast.error("This player name already exists");
       return;
     }
-    setPlayers([...players, trimmedName]);
+    const updatedPlayers = [...players, trimmedName];
+    setPlayers(updatedPlayers);
     setCurrentName("");
+    
+    // Sync to database immediately
+    onPlayersChange?.(updatedPlayers, teammatePairs);
   };
   const removePlayer = (index: number) => {
     const playerToRemove = players[index];
-    setPlayers(players.filter((_, i) => i !== index));
-    // Remove any pairs involving this player
-    setTeammatePairs(teammatePairs.filter(pair => pair.player1 !== playerToRemove && pair.player2 !== playerToRemove));
+    const updatedPlayers = players.filter((_, i) => i !== index);
+    const updatedPairs = teammatePairs.filter(pair => pair.player1 !== playerToRemove && pair.player2 !== playerToRemove);
+    
+    setPlayers(updatedPlayers);
+    setTeammatePairs(updatedPairs);
+    
     if (selectedForPairing === playerToRemove) {
       setSelectedForPairing(null);
     }
+    
+    // Sync to database immediately
+    onPlayersChange?.(updatedPlayers, updatedPairs);
   };
   const togglePairSelection = (player: string) => {
     if (selectedForPairing === player) {
@@ -79,11 +94,15 @@ export const PlayerSetup = ({
       if (existingPair) {
         toast.error("These players are already paired");
       } else {
-        setTeammatePairs([...teammatePairs, {
+        const updatedPairs = [...teammatePairs, {
           player1: selectedForPairing,
           player2: player
-        }]);
+        }];
+        setTeammatePairs(updatedPairs);
         toast.success(`${selectedForPairing} & ${player} are now teammates`);
+        
+        // Sync to database immediately
+        onPlayersChange?.(players, updatedPairs);
       }
       setSelectedForPairing(null);
     }
@@ -92,8 +111,12 @@ export const PlayerSetup = ({
     player1: string;
     player2: string;
   }) => {
-    setTeammatePairs(teammatePairs.filter(p => p !== pair));
+    const updatedPairs = teammatePairs.filter(p => p !== pair);
+    setTeammatePairs(updatedPairs);
     toast.success("Pair removed");
+    
+    // Sync to database immediately
+    onPlayersChange?.(players, updatedPairs);
   };
   const isPaired = (player: string) => {
     return teammatePairs.some(pair => pair.player1 === player || pair.player2 === player);
