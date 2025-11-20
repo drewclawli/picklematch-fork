@@ -14,6 +14,7 @@ interface MyMatchesViewProps {
   currentTime: Date;
   allMatches: Match[];
   onReleaseIdentity?: () => void;
+  onSkipMatch?: (matchId: string) => void;
 }
 
 export const MyMatchesView = ({
@@ -23,6 +24,7 @@ export const MyMatchesView = ({
   currentTime,
   allMatches,
   onReleaseIdentity,
+  onSkipMatch,
 }: MyMatchesViewProps) => {
   const [showLater, setShowLater] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -116,17 +118,16 @@ export const MyMatchesView = ({
             </div>
           </div>
 
-          {/* Time Info */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {status === "completed" && match.clockStartTime ? (
-              <span>Duration: {match.clockStartTime}</span>
-            ) : status === "current" && match.clockStartTime ? (
-              <span>Started: {match.clockStartTime}</span>
-            ) : getEstimatedTime() ? (
-              <span>Estimated: ~{getEstimatedTime()}</span>
-            ) : null}
-          </div>
+          {(status === "current" || status === "upnext") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onSkipMatch?.(match.id)}
+              className="text-xs"
+            >
+              Skip Match
+            </Button>
+          )}
         </div>
       </Card>
     );

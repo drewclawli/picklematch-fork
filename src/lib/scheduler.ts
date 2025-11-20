@@ -82,6 +82,7 @@ interface PlayerStats {
   recentOpponents: string[];
   consecutiveMatches: number;
   matchesPerCourt: Map<number, number>;
+  recentMatchGroups: string[]; // Track last 3 match groups for diversity
 }
 
 // ==================== MATCHUP TRACKING ====================
@@ -151,9 +152,13 @@ class PlayerRotationQueue {
       const statsA = this.playerStats.get(a)!;
       const statsB = this.playerStats.get(b)!;
       
-      // Primary: least play time
-      if (statsA.playTime !== statsB.playTime) {
+      // Primary: least play time (with randomization for close values)
+      const playTimeDiff = Math.abs(statsA.playTime - statsB.playTime);
+      if (playTimeDiff > 5) {
         return statsA.playTime - statsB.playTime;
+      } else if (playTimeDiff > 0) {
+        // If within 5 minutes, add randomness
+        return Math.random() - 0.5;
       }
       
       // Secondary: finished playing longest ago
@@ -401,6 +406,7 @@ function initializePlayerStats(players: string[], courtCount: number): Map<strin
       recentOpponents: [],
       consecutiveMatches: 0,
       matchesPerCourt: new Map(),
+      recentMatchGroups: [], // Track last 3 match groups
     });
   });
   return stats;
@@ -421,6 +427,15 @@ function updatePlayerStats(
   // Track court usage
   const courtCount = stats.matchesPerCourt.get(match.court) || 0;
   stats.matchesPerCourt.set(match.court, courtCount + 1);
+
+  // Track match group (for diversity)
+  if (!match.isSingles) {
+    const [p1, p2] = match.team1 as [string, string];
+    const [p3, p4] = match.team2 as [string, string];
+    const groupKey = [p1, p2, p3, p4].sort().join('-');
+    stats.recentMatchGroups.unshift(groupKey);
+    if (stats.recentMatchGroups.length > 3) stats.recentMatchGroups.pop();
+  }
 
   if (match.isSingles) {
     const opponent = match.team1[0] === player ? match.team2[0] : match.team1[0];
@@ -749,7 +764,20 @@ function evaluateMatchDeterministic(
     if (s1.recentOpponents.slice(0, 2).includes(player2)) score -= 30;
   }
   
-  // 5. DETERMINISTIC TIEBREAKER - Use player name hash for stable sorting
+  // 5. GROUP DIVERSITY - Penalize if same 4 players played together recently
+  const currentGroup = [p1, p2, p3, p4].sort().join('-');
+  let groupRepeatPenalty = 0;
+  [stats1, stats2, stats3, stats4].forEach(stat => {
+    stat.recentMatchGroups.forEach((group, idx) => {
+      if (group === currentGroup) {
+        // More recent = higher penalty (3 most recent groups tracked)
+        groupRepeatPenalty += (3 - idx) * 40;
+      }
+    });
+  });
+  score -= groupRepeatPenalty;
+  
+  // 6. DETERMINISTIC TIEBREAKER - Use player name hash for stable sorting
   const nameHash = (p1 + p2 + p3 + p4).split('').reduce((acc, char) => 
     acc + char.charCodeAt(0), 0
   );

@@ -20,6 +20,7 @@ import logo from "@/assets/logo.png";
 import { MyMatchesView } from "@/components/MyMatchesView";
 import { debugLogger } from "@/lib/debug-logger";
 import { safeStorage } from "@/lib/safe-storage";
+import { setSkipNextMatch } from "@/lib/player-identity";
 type Section = "setup" | "players" | "matches" | "history" | "leaderboard";
 const Index = () => {
   const [activeSection, setActiveSection] = useState<Section>("setup");
@@ -675,6 +676,50 @@ const Index = () => {
     setShowGameCodeDialog(false);
     toast.success("New session started");
   };
+
+  // Skip match handler - marks player as skipping and handles substitution/delay
+  const handleSkipMatch = async (matchId: string) => {
+    if (!gameId || !playerName) return;
+    
+    try {
+      // Mark player as skipping in database
+      await setSkipNextMatch(gameId, playerName, true);
+      
+      // Find the match
+      const match = matches.find(m => m.id === matchId);
+      if (!match) return;
+      
+      const allMatchPlayers = [...match.team1, ...match.team2];
+      
+      // Check how many players in this match are skipping
+      const { data: skippingPlayers } = await supabase
+        .from('player_devices')
+        .select('player_name')
+        .eq('game_id', gameId)
+        .eq('skip_next_match', true)
+        .in('player_name', allMatchPlayers);
+        
+      // If 3+ players skipping, delay the entire match
+      if (skippingPlayers && skippingPlayers.length >= 3) {
+        toast.info(`${skippingPlayers.length} players skipping. Match will be rescheduled.`);
+        // For now, just mark as skipped - full implementation would reschedule
+        return;
+      }
+      
+      toast.success("You've been marked to skip this match");
+      
+      // Auto-clear skip after 5 minutes
+      setTimeout(async () => {
+        if (gameId && playerName) {
+          await setSkipNextMatch(gameId, playerName, false);
+        }
+      }, 5 * 60 * 1000);
+      
+    } catch (error) {
+      console.error("Failed to skip match:", error);
+      toast.error("Failed to skip match");
+    }
+  };
   // Show loading state while restoring session
   if (isRestoringSession) {
     return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex items-center justify-center">
@@ -747,10 +792,18 @@ const Index = () => {
           {activeSection === "matches" && gameConfig && matches.length > 0 && <div className="flex flex-col h-full min-h-0">
               {/* Conditional View Rendering */}
               <div className="flex-1 min-h-0 overflow-y-auto">
-                {isPlayerView && playerName ? <MyMatchesView playerName={playerName} matchGroups={playerMatches} matchScores={matchScores} currentTime={currentTime} allMatches={matches} onReleaseIdentity={() => {
-              releaseIdentity();
-              toast.success("Switched to organizer view");
-            }} /> : <ScheduleView matches={matches} onBack={resetApp} gameConfig={gameConfig} allPlayers={players} onScheduleUpdate={handleScheduleUpdate} matchScores={matchScores} onMatchScoresUpdate={setMatchScores} onCourtConfigUpdate={handleCourtConfigUpdate} isPlayerView={isPlayerView} playerName={playerName} onReleaseIdentity={() => {
+                {isPlayerView && playerName ? <MyMatchesView 
+                  playerName={playerName} 
+                  matchGroups={playerMatches} 
+                  matchScores={matchScores} 
+                  currentTime={currentTime} 
+                  allMatches={matches} 
+                  onReleaseIdentity={() => {
+                    releaseIdentity();
+                    toast.success("Switched to organizer view");
+                  }}
+                  onSkipMatch={handleSkipMatch}
+                /> : <ScheduleView matches={matches} onBack={resetApp} gameConfig={gameConfig} allPlayers={players} onScheduleUpdate={handleScheduleUpdate} matchScores={matchScores} onMatchScoresUpdate={setMatchScores} onCourtConfigUpdate={handleCourtConfigUpdate} isPlayerView={isPlayerView} playerName={playerName} onReleaseIdentity={() => {
               releaseIdentity();
               toast.success("Switched to organizer view");
             }} onShowPlayerSelector={() => setShowPlayerIdentitySelector(true)} />}
