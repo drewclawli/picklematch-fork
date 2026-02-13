@@ -152,7 +152,12 @@ class PlayerRotationQueue {
       const statsA = this.playerStats.get(a)!;
       const statsB = this.playerStats.get(b)!;
       
-      // Primary: least play time (with randomization for close values)
+      // Primary: strongly prefer players who've played fewer consecutive matches
+      // Players with 2+ consecutive should yield to those with 0
+      if (statsA.consecutiveMatches >= 2 && statsB.consecutiveMatches < 2) return 1;
+      if (statsB.consecutiveMatches >= 2 && statsA.consecutiveMatches < 2) return -1;
+      
+      // Secondary: least play time (with randomization for close values)
       const playTimeDiff = Math.abs(statsA.playTime - statsB.playTime);
       if (playTimeDiff > 5) {
         return statsA.playTime - statsB.playTime;
@@ -161,12 +166,12 @@ class PlayerRotationQueue {
         return Math.random() - 0.5;
       }
       
-      // Secondary: finished playing longest ago
+      // Tertiary: finished playing longest ago
       if (statsA.lastMatchEnd !== statsB.lastMatchEnd) {
         return statsA.lastMatchEnd - statsB.lastMatchEnd;
       }
       
-      // Tertiary: randomize to break entry order patterns
+      // Quaternary: randomize to break entry order patterns
       return Math.random() - 0.5;
     });
   }
@@ -177,7 +182,6 @@ class PlayerRotationQueue {
   }
   
   updateAfterMatch() {
-    // Re-sort entire queue after players finish match
     this.queue = this.sortPlayers(this.queue);
   }
 }
@@ -192,10 +196,11 @@ class RestQueue {
   private queue: RestQueueEntry[] = [];
   
   addToRest(player: string, currentSlot: number, consecutiveCount: number) {
-    const restSlots = consecutiveCount >= 3 ? 3 : (consecutiveCount >= 2 ? 2 : 1);
+    const restSlots = consecutiveCount >= 3 ? 2 : 1;
+    this.queue = this.queue.filter(e => e.player !== player);
     this.queue.push({
       player,
-      availableAfter: currentSlot + restSlots,
+      availableAfter: currentSlot + 1 + restSlots,
       reason: consecutiveCount >= 3 ? 'consecutive_3' : 'consecutive_2'
     });
   }
@@ -207,7 +212,6 @@ class RestQueue {
   }
   
   cleanup(currentSlot: number) {
-    // Remove expired entries
     this.queue = this.queue.filter(entry => entry.availableAfter > currentSlot);
   }
 }
@@ -324,6 +328,14 @@ function generateCompleteSchedule(
           
           rotationQueue.updateAfterMatch();
         }
+      }
+    }
+
+    // Reset consecutiveMatches for players who sat out this slot
+    for (const player of players) {
+      if (!playersUsedThisSlot.has(player)) {
+        const stats = playerStats.get(player)!;
+        stats.consecutiveMatches = 0;
       }
     }
 
@@ -1098,6 +1110,14 @@ export function regenerateScheduleFromSlot(
       }
     }
     
+    // Reset consecutiveMatches for players who sat out this slot
+    for (const player of players) {
+      if (!playersUsedThisSlot.has(player)) {
+        const stats = playerStats.get(player)!;
+        stats.consecutiveMatches = 0;
+      }
+    }
+
     schedule.push({ timeSlot: slot, matches: slotMatches });
   }
   
