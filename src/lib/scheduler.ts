@@ -1018,8 +1018,9 @@ export function regenerateScheduleFromSlot(
       );
     }
     
-    // Update player stats
+    // Update player stats - skip players no longer in the game
     [...match.team1, ...match.team2].forEach((player) => {
+      if (!playerStats.has(player)) return; // Player left the game
       updatePlayerStats(player, match, playerStats, gameDuration);
     });
   });
