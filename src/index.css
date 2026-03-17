@@ -151,7 +151,41 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  /* Safe area utilities for mobile devices with notches/home indicators */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  
+  /* Margin variants for safe areas */
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  /* Combined padding for bottom nav + safe area */
   .pb-safe {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 88px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4rem);
+  }
+  
+  /* Landscape safe areas */
+  @media (orientation: landscape) {
+    .safe-area-landscape-left {
+      padding-left: env(safe-area-inset-left, 0px);
+    }
+    
+    .safe-area-landscape-right {
+      padding-right: env(safe-area-inset-right, 0px);
+    }
   }
 }

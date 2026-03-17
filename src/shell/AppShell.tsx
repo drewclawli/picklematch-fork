@@ -3,7 +3,6 @@
  * Provides consistent layout across all variants and viewports
  */
 import React from 'react';
-import { Trophy } from 'lucide-react';
 import { useViewport } from '@/core/hooks/useViewport';
 import { useShell } from './ShellContext';
 import { cn } from '@/lib/utils';
@@ -17,6 +16,7 @@ interface AppShellProps {
   hideHeader?: boolean;
   hideBottomNav?: boolean;
   fullHeight?: boolean;
+  variant?: 'classic' | 'tournament' | 'qualifier';
 }
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -27,15 +27,22 @@ export const AppShell: React.FC<AppShellProps> = ({
   hideHeader = false,
   hideBottomNav = false,
   fullHeight = true,
+  variant = 'classic',
 }) => {
   const { isMobilePortrait, isMobileLandscape, isTablet, isDesktop } = useViewport();
   const { isGameCodeDialogOpen } = useShell();
 
-  // Calculate bottom padding for mobile nav
-  const bottomPadding = !hideBottomNav && (isMobilePortrait || isMobileLandscape) ? 'pb-16' : '';
+  // Calculate bottom padding for mobile nav (safe area + nav height)
+  const bottomPadding = !hideBottomNav && (isMobilePortrait || isMobileLandscape) ? 'pb-20 sm:pb-24' : '';
   
   // Calculate sidebar width for desktop
-  const sidebarWidth = isDesktop && sidebar ? 'ml-64' : '';
+  const sidebarWidth = isDesktop && sidebar ? 'lg:ml-64' : '';
+  
+  // Content max width based on viewport
+  const contentMaxWidth = isDesktop ? 'max-w-5xl' : 'max-w-full';
+  
+  // Horizontal padding based on viewport
+  const horizontalPadding = isDesktop ? 'px-6 lg:px-8' : isTablet ? 'px-4' : 'px-3';
 
   return (
     <div 
@@ -44,15 +51,15 @@ export const AppShell: React.FC<AppShellProps> = ({
         fullHeight && "h-screen flex flex-col"
       )}
     >
-      {/* Decorative background elements */}
-      <div className="absolute inset-0 opacity-5 pointer-events-none overflow-hidden">
-        <div className="absolute top-20 right-10 w-64 h-64 bg-primary rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-accent rounded-full blur-3xl" />
+      {/* Decorative background elements - subtle on mobile */}
+      <div className="absolute inset-0 opacity-[0.03] sm:opacity-5 pointer-events-none overflow-hidden">
+        <div className="absolute top-10 sm:top-20 right-5 sm:right-10 w-32 sm:w-64 h-32 sm:h-64 bg-primary rounded-full blur-3xl" />
+        <div className="absolute bottom-10 sm:bottom-20 left-5 sm:left-10 w-48 sm:w-96 h-48 sm:h-96 bg-accent rounded-full blur-3xl" />
       </div>
 
-      {/* Left Ad Sidebar - Desktop Only */}
+      {/* Left Ad Sidebar - Desktop Only (hidden on smaller screens) */}
       {isDesktop && (
-        <div className="fixed left-2 top-1/2 -translate-y-1/2 w-40 z-20">
+        <div className="hidden xl:block fixed left-2 top-1/2 -translate-y-1/2 w-32 2xl:w-40 z-20">
           <ins 
             className="adsbygoogle"
             style={{ display: 'block' }}
@@ -64,9 +71,9 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
       )}
 
-      {/* Right Ad Sidebar - Desktop Only */}
+      {/* Right Ad Sidebar - Desktop Only (hidden on smaller screens) */}
       {isDesktop && (
-        <div className="fixed right-2 top-1/2 -translate-y-1/2 w-40 z-20">
+        <div className="hidden xl:block fixed right-2 top-1/2 -translate-y-1/2 w-32 2xl:w-40 z-20">
           <ins 
             className="adsbygoogle"
             style={{ display: 'block' }}
@@ -78,9 +85,9 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
       )}
 
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - slides in from left on lg+ screens */}
       {isDesktop && sidebar && (
-        <aside className="fixed left-0 top-0 h-full w-64 bg-card/95 backdrop-blur-sm border-r z-30">
+        <aside className="fixed left-0 top-0 h-full w-60 lg:w-64 bg-card/95 backdrop-blur-sm border-r z-30 hidden lg:block">
           {sidebar}
         </aside>
       )}
@@ -91,23 +98,23 @@ export const AppShell: React.FC<AppShellProps> = ({
           "relative z-10 flex-1 flex flex-col",
           sidebarWidth,
           bottomPadding,
-          isDesktop ? 'px-8' : isTablet ? 'px-6' : 'px-3',
-          isDesktop ? 'max-w-6xl' : 'max-w-5xl',
+          horizontalPadding,
+          contentMaxWidth,
           "mx-auto w-full"
         )}
       >
-        {/* Default Header (can be overridden) */}
+        {/* Default Header (can be overridden) - responsive sizing */}
         {!hideHeader && !header && (
           <header className="text-center py-2 sm:py-3 flex-shrink-0">
-            <div className="flex items-center justify-center mb-2">
+            <div className="flex items-center justify-center mb-1 sm:mb-2">
               <img 
                 src={logo} 
                 alt="PickleballMatch.Fun" 
-                className="h-10 sm:h-12 md:h-14 w-auto" 
+                className="h-8 sm:h-10 md:h-12 lg:h-14 w-auto" 
               />
             </div>
-            <p className="text-muted-foreground text-[10px] sm:text-xs md:text-sm font-medium leading-relaxed px-2 sm:px-0">
-              🎾 Smart team assignment & scoring. Live match scheduling with multi-court management, real-time scoring, and smart team rotation. 🏓
+            <p className="text-muted-foreground text-[10px] sm:text-xs md:text-sm font-medium leading-relaxed px-1 sm:px-2 lg:px-0">
+              🎾 Smart team assignment & scoring. Live match scheduling with multi-court management. 🏓
             </p>
           </header>
         )}
@@ -119,32 +126,33 @@ export const AppShell: React.FC<AppShellProps> = ({
           </header>
         )}
 
-        {/* Content */}
+        {/* Content - with safe area handling */}
         <div className={cn(
           "flex-1 flex flex-col min-h-0",
-          !hideBottomNav && (isMobilePortrait || isMobileLandscape) && "mb-14"
+          // Extra bottom margin on mobile for safe areas
+          !hideBottomNav && (isMobilePortrait || isMobileLandscape) && "mb-safe"
         )}>
           {children}
         </div>
       </main>
 
-      {/* Bottom Navigation - Mobile/Tablet */}
+      {/* Bottom Navigation - Mobile/Tablet with safe area support */}
       {!hideBottomNav && (isMobilePortrait || isMobileLandscape || isTablet) && bottomNav && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
           {bottomNav}
         </nav>
       )}
 
-      {/* Desktop Navigation - Top or Sidebar handled separately */}
+      {/* Desktop Navigation - Top nav bar when no sidebar */}
       {isDesktop && bottomNav && !sidebar && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t">
-          <div className="max-w-6xl mx-auto px-8">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t hidden lg:block">
+          <div className="max-w-5xl mx-auto px-6 lg:px-8">
             {bottomNav}
           </div>
         </nav>
       )}
     </div>
   );
-};
+}
 
 export default AppShell;

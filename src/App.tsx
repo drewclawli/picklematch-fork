@@ -39,20 +39,28 @@ const App = () => {
           <ShellProvider initialVariant="classic">
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                {/* Legacy root - redirects to classic for now */}
+                {/* Legacy root - preserves existing behavior for backward compatibility */}
                 <Route path="/" element={<Index />} />
                 
-                {/* New variant selector at /start */}
+                {/* New variant selector at /start - entry point for new users */}
                 <Route path="/start" element={<VariantSelector />} />
                 
-                {/* Classic Round-Robin Variant */}
+                {/* Classic Round-Robin Variant - Social/Social play */}
+                <Route path="/classic" element={<Navigate to="/classic/" replace />} />
                 <Route path="/classic/*" element={<ClassicVariant />} />
                 
-                {/* Tournament Bracket Variant */}
+                {/* Tournament Bracket Variant - Competitive play */}
+                <Route path="/tournament" element={<Navigate to="/tournament/" replace />} />
                 <Route path="/tournament/*" element={<TournamentVariant />} />
                 
-                {/* Qualifier Stage Variant */}
+                {/* Qualifier Stage Variant - Groups + Knockout */}
+                <Route path="/qualifier" element={<Navigate to="/qualifier/" replace />} />
                 <Route path="/qualifier/*" element={<QualifierVariant />} />
+                
+                {/* Shortcut redirects for common paths */}
+                <Route path="/play" element={<Navigate to="/classic/" replace />} />
+                <Route path="/game" element={<Navigate to="/classic/" replace />} />
+                <Route path="/new" element={<Navigate to="/start" replace />} />
                 
                 {/* Catch-all */}
                 <Route path="*" element={<NotFound />} />

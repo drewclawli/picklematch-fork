@@ -157,10 +157,11 @@ const useClassicGameState = () => {
 export const ClassicVariant: React.FC = () => {
   const navigate = useNavigate();
   const { activeSection, setActiveSection, isPlayerView, playerName, exitPlayerView, enterPlayerView } = useShell();
-  const { isMobilePortrait, isMobileLandscape } = useViewport();
+  const { isMobilePortrait, isMobileLandscape, isDesktop } = useViewport();
   const [showGameCodeDialog, setShowGameCodeDialog] = useState(true);
   const [showPlayerSelector, setShowPlayerSelector] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [joinMode, setJoinMode] = useState<'organizer' | 'player'>('organizer');
   
   const gameState = useClassicGameState();
   const { players, matches, gameConfig, gameId, gameCode, matchScores, setMatchScores } = gameState;
@@ -180,12 +181,20 @@ export const ClassicVariant: React.FC = () => {
     }
   }, [isIdentityPlayerView]);
 
-  // Handle URL join parameter
+  // Handle URL join parameter - improved for player-first experience
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join');
+    const mode = urlParams.get('mode');
+    
     if (joinCode && gameState.userId) {
       window.history.replaceState({}, '', window.location.pathname);
+      
+      // If mode=player, set join mode to player for better UX
+      if (mode === 'player') {
+        setJoinMode('player');
+      }
+      
       joinExistingGame(joinCode);
     }
   }, [gameState.userId]);
