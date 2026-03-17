@@ -598,6 +598,8 @@ export const TournamentVariant: React.FC = () => {
                     releaseIdentity();
                     toast.success("Switched to organizer view");
                   }}
+                  // Skip not supported in bracket tournaments - all matches required for progression
+                  onSkipMatch={undefined}
                 />
               ) : (
                 <ScheduleView

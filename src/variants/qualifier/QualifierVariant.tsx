@@ -550,6 +550,8 @@ export const QualifierVariant: React.FC = () => {
                     releaseIdentity();
                     toast.success("Switched to organizer view");
                   }}
+                  // Skip not supported in qualifier tournaments - all matches required for proper group standings
+                  onSkipMatch={undefined}
                 />
               ) : (
                 <ScheduleView

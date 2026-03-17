@@ -57,7 +57,6 @@ export const MobileBottomNav: React.FC<ResponsiveNavigationProps> = ({
     <div 
       className={cn(
         "bg-card/95 backdrop-blur-md border-t border-border/50",
-        "safe-area-bottom",
         className
       )}
     >

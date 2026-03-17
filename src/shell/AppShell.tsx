@@ -132,9 +132,9 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
       </main>
 
-      {/* Bottom Navigation - Mobile/Tablet with safe area support */}
+      {/* Bottom Navigation - Mobile/Tablet (safe area handled by main content padding) */}
       {!hideBottomNav && (isMobilePortrait || isMobileLandscape || isTablet) && bottomNav && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
+        <nav className="fixed bottom-0 left-0 right-0 z-50">
           {bottomNav}
         </nav>
       )}
