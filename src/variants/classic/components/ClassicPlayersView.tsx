@@ -12,6 +12,7 @@ interface ClassicPlayersViewProps {
   matches: Match[];
   matchScores: Map<string, { team1: number; team2: number }>;
   onPlayersChange: (players: string[], pairs?: { player1: string; player2: string }[]) => void;
+  onPlayersUpdate: (players: string[], pairs?: { player1: string; player2: string }[]) => void;
   onNavigateToMatches: () => void;
 }
 
@@ -22,6 +23,7 @@ export const ClassicPlayersView: React.FC<ClassicPlayersViewProps> = ({
   matches,
   matchScores,
   onPlayersChange,
+  onPlayersUpdate,
   onNavigateToMatches,
 }) => {
   return (
@@ -30,10 +32,8 @@ export const ClassicPlayersView: React.FC<ClassicPlayersViewProps> = ({
         gameCode={gameCode}
         players={players}
         onPlayersChange={onPlayersChange}
-        onPlayersUpdate={(newPlayers, pairs) => {
-          onPlayersChange(newPlayers, pairs);
-        }}
-        matches={matches}
+        onPlayersUpdate={onPlayersUpdate}
+        matches={matches as any}
         matchScores={matchScores}
         teammatePairs={gameConfig?.teammatePairs}
         onNavigateToMatches={onNavigateToMatches}

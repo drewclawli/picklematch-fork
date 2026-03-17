@@ -6,7 +6,7 @@ import { ScheduleView } from "@/components/ScheduleView";
 import { Button } from "@/components/ui/button";
 import { UserCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Match, GameConfig } from "@/core/types";
+import type { Match, GameConfig, CourtConfig } from "@/core/types";
 
 interface ClassicMatchesViewProps {
   matches: Match[];
@@ -14,6 +14,8 @@ interface ClassicMatchesViewProps {
   players: string[];
   matchScores: Map<string, { team1: number; team2: number }>;
   onMatchScoresUpdate: (scores: Map<string, { team1: number; team2: number }>) => void;
+  onScheduleUpdate: (matches: Match[], players: string[]) => void;
+  onCourtConfigUpdate: (configs: CourtConfig[]) => void;
   isPlayerView: boolean;
   playerName: string | null;
   onShowPlayerSelector: () => void;
@@ -25,6 +27,8 @@ export const ClassicMatchesView: React.FC<ClassicMatchesViewProps> = ({
   players,
   matchScores,
   onMatchScoresUpdate,
+  onScheduleUpdate,
+  onCourtConfigUpdate,
   isPlayerView,
   playerName,
   onShowPlayerSelector,
@@ -33,7 +37,6 @@ export const ClassicMatchesView: React.FC<ClassicMatchesViewProps> = ({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Player-First CTA Banner - Show when not in player view but players exist */}
       {!isPlayerView && hasPlayers && (
         <div className={cn(
           "flex items-center justify-between gap-3 mb-3 p-3 rounded-lg",
@@ -50,18 +53,13 @@ export const ClassicMatchesView: React.FC<ClassicMatchesViewProps> = ({
               </p>
             </div>
           </div>
-          <Button 
-            size="sm" 
-            onClick={onShowPlayerSelector}
-            className="shrink-0"
-          >
+          <Button size="sm" onClick={onShowPlayerSelector} className="shrink-0">
             <UserCircle className="w-4 h-4 mr-1.5" />
             I'm Playing
           </Button>
         </div>
       )}
 
-      {/* Organizer Mode Indicator */}
       {!isPlayerView && (
         <div className="flex items-center gap-2 mb-2 px-1">
           <Users className="w-4 h-4 text-muted-foreground" />
@@ -71,14 +69,14 @@ export const ClassicMatchesView: React.FC<ClassicMatchesViewProps> = ({
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         <ScheduleView
-          matches={matches}
+          matches={matches as any}
           onBack={() => {}}
-          gameConfig={gameConfig}
+          gameConfig={gameConfig as any}
           allPlayers={players}
-          onScheduleUpdate={() => {}}
+          onScheduleUpdate={(updatedMatches, updatedPlayers) => onScheduleUpdate(updatedMatches as any, updatedPlayers)}
           matchScores={matchScores}
           onMatchScoresUpdate={onMatchScoresUpdate}
-          onCourtConfigUpdate={() => {}}
+          onCourtConfigUpdate={(configs) => onCourtConfigUpdate(configs as CourtConfig[])}
           isPlayerView={isPlayerView}
           playerName={playerName}
           onReleaseIdentity={() => {}}
