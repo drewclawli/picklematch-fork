@@ -354,10 +354,12 @@ export const ScheduleView = ({
     const formattedElapsedTime = formatTime(elapsedTime);
 
     // Calculate actual end time for schedule adjustment (Issue #2)
+    // Fixed: Use compatible time basis - add elapsed time to scheduled start time
+    // so actualEndTime is comparable to scheduledEndTime (both absolute from session start)
     const now = Date.now();
     const completedMatchRef = matches.find(m => m.id === matchId);
-    const actualEndTime = match?.timerStartTime 
-      ? Math.floor((now - match.timerStartTime) / 60000) // Convert ms to minutes
+    const actualEndTime = match?.timerStartTime && completedMatchRef
+      ? completedMatchRef.startTime + Math.floor((now - match.timerStartTime) / 60000)
       : (completedMatchRef ? completedMatchRef.endTime : 0);
 
     // Build updated matches atomically - single update path (Issue #1)

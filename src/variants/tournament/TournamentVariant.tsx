@@ -250,6 +250,12 @@ export const TournamentVariant: React.FC = () => {
   const handlePlayersUpdate = async (players: string[], pairs?: { player1: string; player2: string }[]) => {
     if (!state.gameConfig || !state.gameId) return;
 
+    // Capture previous state for rollback on DB failure
+    const previousPlayers = state.players;
+    const previousConfig = state.gameConfig;
+    const previousMatches = state.matches;
+    const previousScores = new Map(state.matchScores);
+
     const gameConfig = { ...state.gameConfig, teammatePairs: pairs };
     state.setPlayers(players);
     state.setGameConfig(gameConfig);
@@ -308,7 +314,13 @@ export const TournamentVariant: React.FC = () => {
       setActiveSection("matches");
       toast.success(schedulingType === "qualifier-tournament" ? "Qualifier bracket generated!" : "Tournament bracket generated!");
     } catch (error: any) {
-      toast.error(error?.message || "Failed to generate tournament bracket");
+      // Rollback on error to prevent local/remote divergence
+      state.setPlayers(previousPlayers);
+      state.setGameConfig(previousConfig);
+      state.setMatches(previousMatches);
+      state.setMatchScores(previousScores);
+      toast.error(error?.message || "Failed to generate tournament bracket. Changes reverted.");
+      console.error("handlePlayersUpdate error:", error);
     }
   };
 
