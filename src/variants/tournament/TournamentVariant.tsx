@@ -471,7 +471,7 @@ export const TournamentVariant: React.FC = () => {
         />
       )}
 
-      <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
+      <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0">
         {/* Tournament Progress Header - Shows guided flow */}
         {state.gameConfig && (
           <div className="px-2 pt-2 pb-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">

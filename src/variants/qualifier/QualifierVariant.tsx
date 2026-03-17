@@ -453,7 +453,7 @@ export const QualifierVariant: React.FC = () => {
         />
       )}
 
-      <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
+      <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0">
         {/* Stage Progress Header - Shows tournament structure */}
         {stageInfo && (
           <div className="px-2 pt-2 pb-2 border-b bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-950/20">

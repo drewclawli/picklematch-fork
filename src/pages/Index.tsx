@@ -768,7 +768,7 @@ const Index = () => {
         }} />
       </div>
       
-      <div className="max-w-5xl mx-auto p-2 sm:p-3 w-full relative z-10 flex flex-col h-full min-h-0">
+      <div className="max-w-5xl mx-auto p-2 sm:p-3 pb-20 sm:pb-24 w-full relative z-10 flex flex-col h-full min-h-0">
         <header className="text-center py-2 sm:py-3 flex-shrink-0">
           <div className="flex items-center justify-center mb-2">
             <img src={logo} alt="PickleballMatch.Fun" className="h-10 sm:h-12 md:h-14 w-auto" />
@@ -778,7 +778,7 @@ const Index = () => {
 
         <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
 
-        <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
+        <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0">
           {activeSection === "setup" && <div className="flex flex-col h-full">
               <div className="flex-1 overflow-y-auto">
                 <GameSetup 

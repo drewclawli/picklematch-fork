@@ -438,7 +438,7 @@ export const ClassicVariant: React.FC = () => {
         />
       )}
 
-      <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
+      <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0">
         {activeSection === "setup" && (
           <ClassicSetupView gameCode={gameCode} onComplete={handleSetupComplete} onNewSession={gameId ? startNewSession : undefined} />
         )}
