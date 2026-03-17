@@ -1,10 +1,12 @@
 /**
  * TournamentVariant - Bracket tournament experience
+ * Guided bracket-first tournament flow
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Trophy, Users, Calendar } from "lucide-react";
+import { Trophy, Users, Calendar, ChevronRight, Swords, Target, Medal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 import { AppShell, ResponsiveNavigation, useShell } from "@/shell";
 import { Card } from "@/components/ui/card";
@@ -14,6 +16,7 @@ import { CheckInOut } from "@/components/CheckInOut";
 import { ScheduleView } from "@/components/ScheduleView";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MatchHistory } from "@/components/MatchHistory";
+import { TournamentBracketDialog } from "@/components/TournamentBracketDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { safeStorage } from "@/lib/safe-storage";
 import { processByeMatches } from "@/lib/tournament-progression";
@@ -22,6 +25,8 @@ import { generateQualifierTournamentSchedule } from "@/lib/qualifier-tournament-
 import type { Match, GameConfig } from "@/core/types";
 
 type TournamentScheduling = NonNullable<GameConfig["schedulingType"]>;
+
+type TournamentStep = 'setup' | 'players' | 'bracket' | 'matches';
 
 const useTournamentGameState = () => {
   const [players, setPlayers] = useState<string[]>([]);
@@ -64,7 +69,7 @@ const useTournamentGameState = () => {
       }
     };
     initAuth();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => setUserId(session?.user?.id || null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => setUserId(session?.user.id || null));
     return () => subscription.unsubscribe();
   }, []);
 
@@ -137,10 +142,37 @@ const useTournamentGameState = () => {
   };
 };
 
+// Tournament structure helper
+const getTournamentStructure = (playerCount: number, isSingles: boolean, schedulingType: TournamentScheduling) => {
+  if (schedulingType === 'qualifier-tournament') return null;
+  
+  const teamCount = isSingles ? playerCount : playerCount / 2;
+  if (![4, 8, 16].includes(teamCount)) return null;
+  
+  const rounds = Math.log2(teamCount);
+  const roundNames = ['Final', 'Semifinals', 'Quarterfinals', 'Round of 16'];
+  
+  return {
+    teamCount,
+    rounds,
+    roundNames: roundNames.slice(0, rounds).reverse(),
+    totalMatches: teamCount - 1,
+  };
+};
+
+// Get current tournament step
+const getCurrentStep = (activeSection: string, matches: Match[]): TournamentStep => {
+  if (activeSection === 'setup') return 'setup';
+  if (activeSection === 'players' && matches.length === 0) return 'players';
+  if (activeSection === 'players' && matches.length > 0) return 'bracket';
+  return 'matches';
+};
+
 export const TournamentVariant: React.FC = () => {
   const { activeSection, setActiveSection } = useShell();
   const state = useTournamentGameState();
   const [showGameCodeDialog, setShowGameCodeDialog] = useState(true);
+  const [showBracketDialog, setShowBracketDialog] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -237,20 +269,16 @@ export const TournamentVariant: React.FC = () => {
     try {
       const { error } = await supabase.from("games").update({ players, game_config: updatedConfig as any }).eq("id", state.gameId);
       if (error) throw error;
-      // Success - no need to show toast for every player change
     } catch (err) {
-      // Rollback on error (Issue #3)
       state.setPlayers(previousPlayers);
       state.setGameConfig(previousConfig);
       toast.error("Failed to save players. Changes reverted.");
-      console.error("handlePlayersChange error:", err);
     }
   };
 
   const handlePlayersUpdate = async (players: string[], pairs?: { player1: string; player2: string }[]) => {
     if (!state.gameConfig || !state.gameId) return;
 
-    // Capture previous state for rollback on DB failure
     const previousPlayers = state.players;
     const previousConfig = state.gameConfig;
     const previousMatches = state.matches;
@@ -314,13 +342,11 @@ export const TournamentVariant: React.FC = () => {
       setActiveSection("matches");
       toast.success(schedulingType === "qualifier-tournament" ? "Qualifier bracket generated!" : "Tournament bracket generated!");
     } catch (error: any) {
-      // Rollback on error to prevent local/remote divergence
       state.setPlayers(previousPlayers);
       state.setGameConfig(previousConfig);
       state.setMatches(previousMatches);
       state.setMatchScores(previousScores);
       toast.error(error?.message || "Failed to generate tournament bracket. Changes reverted.");
-      console.error("handlePlayersUpdate error:", error);
     }
   };
 
@@ -339,12 +365,10 @@ export const TournamentVariant: React.FC = () => {
       const { error } = await supabase.from("games").update({ matches: sanitized as any, players }).eq("id", state.gameId);
       if (error) throw error;
     } catch (err) {
-      // Rollback on error (Issue #3)
       state.setMatches(previousMatches);
       state.setPlayers(previousPlayers);
       state.setMatchScores(previousScores);
       toast.error("Failed to save match update. Changes reverted.");
-      console.error("handleScheduleUpdate error:", err);
     }
   };
 
@@ -358,12 +382,26 @@ export const TournamentVariant: React.FC = () => {
       const { error } = await supabase.from("games").update({ game_config: updatedConfig as any }).eq("id", state.gameId);
       if (error) throw error;
     } catch (err) {
-      // Rollback on error (Issue #3)
       state.setGameConfig(previousConfig);
       toast.error("Failed to save court config. Changes reverted.");
-      console.error("handleCourtConfigUpdate error:", err);
     }
   };
+
+  // Calculate tournament structure info
+  const structure = state.gameConfig && state.players.length > 0
+    ? getTournamentStructure(
+        state.players.length, 
+        state.gameConfig.tournamentPlayStyle === 'singles',
+        state.gameConfig.schedulingType as TournamentScheduling || 'single-elimination'
+      )
+    : null;
+
+  // Count completed matches
+  const completedMatches = state.matches.filter(m => state.matchScores.has(m.id));
+  const progress = state.matches.length > 0 ? (completedMatches.length / state.matches.length) * 100 : 0;
+
+  // Get current step
+  const currentStep = getCurrentStep(activeSection, state.matches);
 
   if (state.isRestoringSession) {
     return (
@@ -383,6 +421,90 @@ export const TournamentVariant: React.FC = () => {
       <GameCodeDialog open={showGameCodeDialog} onOpenChange={setShowGameCodeDialog} onJoinGame={joinExistingGame} onCreateGame={createNewGame} />
 
       <Card className="p-2 sm:p-3 shadow-sport border-2 border-primary/10 backdrop-blur-sm bg-card/80 flex-1 flex flex-col min-h-0 mb-14">
+        {/* Tournament Progress Header - Shows guided flow */}
+        {state.gameConfig && (
+          <div className="px-2 pt-2 pb-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
+            {/* Step Indicator */}
+            <div className="flex items-center justify-center gap-1 sm:gap-2 mb-3">
+              <StepIndicator 
+                step="Setup" 
+                icon={Target} 
+                isActive={currentStep === 'setup'} 
+                isComplete={currentStep !== 'setup'}
+              />
+              <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+              <StepIndicator 
+                step="Players" 
+                icon={Users} 
+                isActive={currentStep === 'players'} 
+                isComplete={state.matches.length > 0}
+              />
+              <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+              <StepIndicator 
+                step="Bracket" 
+                icon={Swords} 
+                isActive={currentStep === 'bracket'} 
+                isComplete={completedMatches.length > 0}
+              />
+              <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+              <StepIndicator 
+                step="Matches" 
+                icon={Trophy} 
+                isActive={currentStep === 'matches' && completedMatches.length > 0}
+                isComplete={completedMatches.length === state.matches.length && state.matches.length > 0}
+              />
+            </div>
+
+            {/* Tournament Info Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Medal className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">
+                    {state.gameConfig.schedulingType === 'double-elimination' ? 'Double Elimination' : 'Single Elimination'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {structure ? `${structure.teamCount} teams • ${structure.rounds} rounds` : `${state.players.length} players`}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* Bracket Button - Prominent when bracket exists */}
+                {state.matches.length > 0 && (
+                  <Button
+                    onClick={() => setShowBracketDialog(true)}
+                    variant={completedMatches.length === 0 ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5 h-8"
+                  >
+                    <Swords className="w-3.5 h-3.5" />
+                    View Bracket
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            {/* Progress bar - shows match completion */}
+            {state.matches.length > 0 && (
+              <div className="mt-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>Tournament Progress</span>
+                  <span>{completedMatches.length}/{state.matches.length} matches</span>
+                </div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeSection === "setup" && (
           <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto">
@@ -421,14 +543,13 @@ export const TournamentVariant: React.FC = () => {
                 onCourtConfigUpdate={handleCourtConfigUpdate}
               />
             ) : (
-              // Issue #4: Empty state when bracket hasn't been generated yet
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-6 text-center">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                   <Calendar className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">No Matches Yet</h3>
                 <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                  The tournament bracket hasn't been generated. Add players and generate the bracket to start scoring matches.
+                  The tournament bracket hasn&apos;t been generated. Add players and generate the bracket to start scoring matches.
                 </p>
                 <Button 
                   onClick={() => setActiveSection("players")}
@@ -445,8 +566,43 @@ export const TournamentVariant: React.FC = () => {
         {activeSection === "history" && <MatchHistory matches={state.matches as any} matchScores={state.matchScores} />}
         {activeSection === "leaderboard" && <Leaderboard players={state.players} matches={state.matches as any} matchScores={state.matchScores} />}
       </Card>
+
+      {/* Tournament Bracket Dialog */}
+      {state.matches.length > 0 && (
+        <TournamentBracketDialog
+          open={showBracketDialog}
+          onOpenChange={setShowBracketDialog}
+          matches={state.matches}
+          matchScores={state.matchScores}
+          allPlayers={state.players}
+          schedulingType={state.gameConfig?.schedulingType}
+        />
+      )}
     </AppShell>
   );
 };
+
+// Step indicator component
+interface StepIndicatorProps {
+  step: string;
+  icon: React.ElementType;
+  isActive: boolean;
+  isComplete: boolean;
+}
+
+function StepIndicator({ step, icon: Icon, isActive, isComplete }: StepIndicatorProps) {
+  return (
+    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+      isActive 
+        ? 'bg-primary text-primary-foreground' 
+        : isComplete 
+          ? 'bg-primary/20 text-primary' 
+          : 'bg-muted text-muted-foreground'
+    }`}>
+      <Icon className="w-3 h-3" />
+      <span className="hidden sm:inline">{step}</span>
+    </div>
+  );
+}
 
 export default TournamentVariant;
