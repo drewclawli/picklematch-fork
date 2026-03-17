@@ -2,7 +2,7 @@
  * Shell Context - Manages app shell state
  * Navigation, layout mode, and responsive behavior
  */
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { Section, VariantType } from '@/core/types';
 
 interface ShellContextState {
@@ -34,12 +34,33 @@ interface ShellContextState {
 
 const ShellContext = createContext<ShellContextState | undefined>(undefined);
 
-export const ShellProvider: React.FC<{ 
+export const ShellProvider: React.FC<{
   children: React.ReactNode;
   initialVariant?: VariantType;
 }> = ({ children, initialVariant = 'classic' }) => {
   const [activeSection, setActiveSection] = useState<Section>('setup');
+  // Issue #5: variant should reflect the current URL path, not just initial
   const [variant, setVariant] = useState<VariantType>(initialVariant);
+
+  // Sync variant with URL path on mount and when location changes
+  useEffect(() => {
+    const updateVariantFromPath = () => {
+      const path = window.location.pathname;
+      if (path.includes('/tournament')) {
+        setVariant('tournament');
+      } else if (path.includes('/qualifier')) {
+        setVariant('qualifier');
+      } else if (path.includes('/classic')) {
+        setVariant('classic');
+      }
+    };
+
+    updateVariantFromPath();
+
+    // Listen for popstate events (back/forward navigation)
+    window.addEventListener('popstate', updateVariantFromPath);
+    return () => window.removeEventListener('popstate', updateVariantFromPath);
+  }, []);
   const [isPlayerView, setIsPlayerView] = useState(false);
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

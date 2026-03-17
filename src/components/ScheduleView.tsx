@@ -353,17 +353,32 @@ export const ScheduleView = ({
     const elapsedTime = match ? courtElapsedTimes.get(match.court) || 0 : 0;
     const formattedElapsedTime = formatTime(elapsedTime);
 
-    // Update ALL matches to include ALL scores (both new and existing)
-    const updatedMatches = matches.map(m => {
+    // Calculate actual end time for schedule adjustment (Issue #2)
+    const now = Date.now();
+    const completedMatchRef = matches.find(m => m.id === matchId);
+    const actualEndTime = match?.timerStartTime 
+      ? Math.floor((now - match.timerStartTime) / 60000) // Convert ms to minutes
+      : (completedMatchRef ? completedMatchRef.endTime : 0);
+
+    // Build updated matches atomically - single update path (Issue #1)
+    let updatedMatches = matches.map(m => {
       if (m.id === matchId) {
-        return {
+        const updated: Match = {
           ...m,
           score: {
             team1: team1Score,
             team2: team2Score
           },
-          clockStartTime: formattedElapsedTime
+          clockStartTime: formattedElapsedTime,
+          actualEndTime: actualEndTime, // Issue #2: proper actual end time
+          status: 'completed' as const,
         };
+        // Remove timerStartTime when match is completed (not in edit mode)
+        if (!wasAlreadyScored) {
+          const { timerStartTime, ...rest } = updated;
+          return rest as Match;
+        }
+        return updated;
       }
       // Preserve existing scores using the latest scores map
       const existingScore = newScores.get(m.id);
@@ -376,56 +391,39 @@ export const ScheduleView = ({
       return m;
     });
 
-    // Save to database with all scores preserved
-    onScheduleUpdate(updatedMatches, allPlayers);
-    const newPending = new Map(pendingScores);
-    newPending.delete(matchId);
-    setPendingScores(newPending);
+    // Handle tournament progression atomically (Issue #1)
+    if (!wasAlreadyScored && isTournamentMode && match) {
+      const winner: 'team1' | 'team2' = team1Score > team2Score ? 'team1' : 'team2';
+      
+      // For qualifier tournaments, handle group progression
+      if (match.qualifierMetadata?.isGroupStage) {
+        // First, advance within group brackets (for groups of 4)
+        updatedMatches = advanceWithinGroupBrackets(updatedMatches, newScores);
+        
+        // Then, check if any groups are complete and advance to knockout
+        updatedMatches = advanceGroupWinnersToKnockout(updatedMatches, newScores);
+      } else {
+        // Standard tournament progression
+        updatedMatches = advanceWinnerToNextMatch(match, winner, updatedMatches);
+      }
+    }
 
-    // Reset court timer when score is confirmed for current match (not when editing past scores)
+    // Reset court timer state (not part of schedule update)
     if (match && !wasAlreadyScored) {
       const newCourtTimers = new Map(courtTimers);
       newCourtTimers.delete(match.court);
       setCourtTimers(newCourtTimers);
-
-      // Clear timerStartTime from the completed match
-      const clearedMatches = updatedMatches.map(m => {
-        if (m.id === matchId) {
-          const {
-            timerStartTime,
-            ...rest
-          } = m;
-          return rest as Match;
-        }
-        return m;
-      });
-      onScheduleUpdate(clearedMatches, allPlayers);
     }
+
+    // Single atomic schedule update (Issue #1)
+    onScheduleUpdate(updatedMatches, allPlayers);
+    
+    const newPending = new Map(pendingScores);
+    newPending.delete(matchId);
+    setPendingScores(newPending);
 
     // Only check conflicts and schedule adjustments for newly completed matches, not edited ones
     if (!wasAlreadyScored) {
-      // If tournament mode, advance winners
-      if (isTournamentMode && match) {
-        const winner: 'team1' | 'team2' = team1Score > team2Score ? 'team1' : 'team2';
-        
-        // For qualifier tournaments, handle group progression
-        if (match.qualifierMetadata?.isGroupStage) {
-          // First, advance within group brackets (for groups of 4)
-          let progressedMatches = advanceWithinGroupBrackets(updatedMatches, newScores);
-          
-          // Then, check if any groups are complete and advance to knockout
-          const advancedMatches = advanceGroupWinnersToKnockout(progressedMatches, newScores);
-          onScheduleUpdate(advancedMatches, allPlayers);
-        } else {
-          // Standard tournament progression
-          const advancedMatches = advanceWinnerToNextMatch(match, winner, updatedMatches);
-          onScheduleUpdate(advancedMatches, allPlayers);
-        }
-      }
-
-      const completedMatchRef = matches.find(m => m.id === matchId);
-      const actualEndTime = completedMatchRef ? completedMatchRef.endTime : 0;
-      
       // Only check conflicts for round-robin mode
       if (!isTournamentMode) {
         checkScheduleAdjustment(matchId, actualEndTime, newScores);

@@ -22,6 +22,42 @@ export interface Match {
   isBye?: boolean;
   round?: number;
   matchNumber?: number;
+  // Issue #2: actual-end-time plumbing for schedule adjustment
+  actualEndTime?: number;
+  timerStartTime?: number;
+  clockStartTime?: string;
+  status?: 'scheduled' | 'in-progress' | 'completed' | 'waiting' | 'bye';
+  isSingles?: boolean;
+  isLocked?: boolean;
+  elapsedTime?: string;
+  // Tournament/Qualifier metadata
+  tournamentMetadata?: {
+    bracketType: 'winners' | 'losers' | 'finals' | 'grand-finals' | 'third-place';
+    round: number;
+    roundName: string;
+    matchNumber: number;
+    bracketPosition?: string;
+    advancesTo?: string;
+    advancesToSlot?: 'team1' | 'team2';
+    loserAdvancesTo?: string;
+    loserAdvancesToSlot?: 'team1' | 'team2';
+    sourceMatch1?: string;
+    sourceMatch2?: string;
+    seed1?: number;
+    seed2?: number;
+  };
+  qualifierMetadata?: {
+    groupId: string;
+    groupSize: 2 | 3 | 4;
+    groupMatchNum: number;
+    isGroupStage: boolean;
+    advancesToKnockout?: boolean;
+    isGroupSemifinal?: boolean;
+    isGroupFinal?: boolean;
+    advancesToGroupMatch?: string;
+    sourceGroupMatch1?: string;
+    sourceGroupMatch2?: string;
+  };
 }
 
 export type SchedulingType = 

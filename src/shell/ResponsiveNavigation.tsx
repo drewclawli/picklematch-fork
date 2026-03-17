@@ -143,11 +143,21 @@ export const MobileLandscapeSideNav: React.FC<ResponsiveNavigationProps> = ({
   );
 };
 
+// Issue #5: Get variant label for display
+const getVariantLabel = (variant: string): string => {
+  switch (variant) {
+    case 'tournament': return 'Tournament Mode';
+    case 'qualifier': return 'Qualifier Mode';
+    case 'classic':
+    default: return 'Classic Mode';
+  }
+};
+
 export const DesktopSidebar: React.FC<ResponsiveNavigationProps> = ({
   disabled = false,
   className,
 }) => {
-  const { activeSection, setActiveSection } = useShell();
+  const { activeSection, setActiveSection, variant } = useShell();
 
   return (
     <div className={cn("flex flex-col h-full py-4 lg:py-6", className)}>
@@ -184,7 +194,7 @@ export const DesktopSidebar: React.FC<ResponsiveNavigationProps> = ({
 
       <div className="px-3 lg:px-4 pt-4 lg:pt-6 border-t border-border/50">
         <p className="text-[10px] text-muted-foreground">
-          v2.0 • Classic Mode
+          v2.0 • {getVariantLabel(variant)}
         </p>
       </div>
     </div>

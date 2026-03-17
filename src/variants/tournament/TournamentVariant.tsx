@@ -3,7 +3,8 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Trophy } from "lucide-react";
+import { Trophy, Users, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import { AppShell, ResponsiveNavigation, useShell } from "@/shell";
 import { Card } from "@/components/ui/card";
@@ -225,11 +226,25 @@ export const TournamentVariant: React.FC = () => {
   };
 
   const handlePlayersChange = async (players: string[], pairs?: { player1: string; player2: string }[]) => {
+    const previousPlayers = state.players;
+    const previousConfig = state.gameConfig;
+    
     state.setPlayers(players);
     if (!state.gameConfig || !state.gameId) return;
     const updatedConfig = { ...state.gameConfig, teammatePairs: pairs };
     state.setGameConfig(updatedConfig);
-    await supabase.from("games").update({ players, game_config: updatedConfig as any }).eq("id", state.gameId);
+    
+    try {
+      const { error } = await supabase.from("games").update({ players, game_config: updatedConfig as any }).eq("id", state.gameId);
+      if (error) throw error;
+      // Success - no need to show toast for every player change
+    } catch (err) {
+      // Rollback on error (Issue #3)
+      state.setPlayers(previousPlayers);
+      state.setGameConfig(previousConfig);
+      toast.error("Failed to save players. Changes reverted.");
+      console.error("handlePlayersChange error:", err);
+    }
   };
 
   const handlePlayersUpdate = async (players: string[], pairs?: { player1: string; player2: string }[]) => {
@@ -298,19 +313,44 @@ export const TournamentVariant: React.FC = () => {
   };
 
   const handleScheduleUpdate = async (matches: Match[], players: string[]) => {
+    const previousMatches = state.matches;
+    const previousPlayers = state.players;
+    const previousScores = new Map(state.matchScores);
+    
     const sanitized = state.sanitizeMatches(matches);
     state.setMatches(sanitized);
     state.setPlayers(players);
     state.syncMatchScoresFromMatches(sanitized);
     if (!state.gameId) return;
-    await supabase.from("games").update({ matches: sanitized as any, players }).eq("id", state.gameId);
+    
+    try {
+      const { error } = await supabase.from("games").update({ matches: sanitized as any, players }).eq("id", state.gameId);
+      if (error) throw error;
+    } catch (err) {
+      // Rollback on error (Issue #3)
+      state.setMatches(previousMatches);
+      state.setPlayers(previousPlayers);
+      state.setMatchScores(previousScores);
+      toast.error("Failed to save match update. Changes reverted.");
+      console.error("handleScheduleUpdate error:", err);
+    }
   };
 
   const handleCourtConfigUpdate = async (courtConfigs: any[]) => {
     if (!state.gameConfig || !state.gameId) return;
+    const previousConfig = state.gameConfig;
     const updatedConfig = { ...state.gameConfig, courtConfigs };
     state.setGameConfig(updatedConfig);
-    await supabase.from("games").update({ game_config: updatedConfig as any }).eq("id", state.gameId);
+    
+    try {
+      const { error } = await supabase.from("games").update({ game_config: updatedConfig as any }).eq("id", state.gameId);
+      if (error) throw error;
+    } catch (err) {
+      // Rollback on error (Issue #3)
+      state.setGameConfig(previousConfig);
+      toast.error("Failed to save court config. Changes reverted.");
+      console.error("handleCourtConfigUpdate error:", err);
+    }
   };
 
   if (state.isRestoringSession) {
@@ -355,18 +395,38 @@ export const TournamentVariant: React.FC = () => {
           </div>
         )}
 
-        {activeSection === "matches" && state.gameConfig && state.matches.length > 0 && (
+        {activeSection === "matches" && state.gameConfig && (
           <div className="flex-1 min-h-0 overflow-y-auto">
-            <ScheduleView
-              matches={state.matches as any}
-              onBack={() => setActiveSection("players")}
-              gameConfig={state.gameConfig as any}
-              allPlayers={state.players}
-              onScheduleUpdate={(matches, players) => handleScheduleUpdate(matches as any, players)}
-              matchScores={state.matchScores}
-              onMatchScoresUpdate={state.setMatchScores}
-              onCourtConfigUpdate={handleCourtConfigUpdate}
-            />
+            {state.matches.length > 0 ? (
+              <ScheduleView
+                matches={state.matches as any}
+                onBack={() => setActiveSection("players")}
+                gameConfig={state.gameConfig as any}
+                allPlayers={state.players}
+                onScheduleUpdate={(matches, players) => handleScheduleUpdate(matches as any, players)}
+                matchScores={state.matchScores}
+                onMatchScoresUpdate={state.setMatchScores}
+                onCourtConfigUpdate={handleCourtConfigUpdate}
+              />
+            ) : (
+              // Issue #4: Empty state when bracket hasn't been generated yet
+              <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <Calendar className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No Matches Yet</h3>
+                <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+                  The tournament bracket hasn't been generated. Add players and generate the bracket to start scoring matches.
+                </p>
+                <Button 
+                  onClick={() => setActiveSection("players")}
+                  className="gap-2"
+                >
+                  <Users className="w-4 h-4" />
+                  Go to Players
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

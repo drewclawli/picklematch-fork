@@ -32,8 +32,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   const { isMobilePortrait, isMobileLandscape, isTablet, isDesktop } = useViewport();
   const { isGameCodeDialogOpen } = useShell();
 
-  // Calculate bottom padding for mobile nav (safe area + nav height)
-  const bottomPadding = !hideBottomNav && (isMobilePortrait || isMobileLandscape) ? 'pb-20 sm:pb-24' : '';
+  // Issue #6: Fix tablet bottom-nav overlap - include tablet in bottom padding calculation
+  const bottomPadding = !hideBottomNav && (isMobilePortrait || isMobileLandscape || isTablet) ? 'pb-20 sm:pb-24' : '';
   
   // Calculate sidebar width for desktop
   const sidebarWidth = isDesktop && sidebar ? 'lg:ml-64' : '';
@@ -129,8 +129,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         {/* Content - with safe area handling */}
         <div className={cn(
           "flex-1 flex flex-col min-h-0",
-          // Extra bottom margin on mobile for safe areas
-          !hideBottomNav && (isMobilePortrait || isMobileLandscape) && "mb-safe"
+          // Issue #6: Extra bottom margin on mobile AND tablet for safe areas
+          !hideBottomNav && (isMobilePortrait || isMobileLandscape || isTablet) && "mb-safe"
         )}>
           {children}
         </div>
